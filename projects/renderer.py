@@ -20,26 +20,26 @@ DEFAULT_CFG = {
 
     "glyphs_dir": "glyph_sets",
     "glyph_size": 42,
-    "render_scale_multiplier": 1.45,
+    "render_scale_multiplier": 1.36,
 
-    "line_height": 86,
+    "line_height": 82,
 
     "char_spacing": 2,
-    "word_spacing": 30,
-    "word_spacing_jitter": 10,
-    "line_drift_per_word": 1.2,
-    "baseline_jitter": 1.0,
+    "word_spacing": 26,
+    "word_spacing_jitter": 3,
+    "line_drift_per_word": 0.18,
+    "baseline_jitter": 0.25,
 
-    "rotation_range": (-6, 6),
+    "rotation_range": (-2.0, 2.0),
 
     "ink_color": (15, 30, 80),
     "page_color": (252, 248, 235),
 
-    "pressure_min": 0.78,
-    "pressure_max": 1.00,
-    "stroke_gain": 1.32,
+    "pressure_min": 0.90,
+    "pressure_max": 0.98,
+    "stroke_gain": 1.20,
     "edge_roughness": 0.0,
-    "texture_blend": 0.16,
+    "texture_blend": 0.08,
 }
 
 ASCENDERS = set("bdfhklt")
@@ -86,43 +86,43 @@ def get_char_metrics(char):
 
     if group == "upper":
         return {
-            "scale_range": (0.44, 0.58),
+            "scale_range": (0.48, 0.54),
             "width_factor": 1.00,
             "baseline_shift": 0,
         }
     if group == "lower_asc":
         return {
-            "scale_range": (0.39, 0.48),
+            "scale_range": (0.41, 0.45),
             "width_factor": 0.96,
             "baseline_shift": 0,
         }
     if group == "lower_desc":
         return {
-            "scale_range": (0.50, 0.62),
+            "scale_range": (0.45, 0.50),
             "width_factor": 0.96,
-            "baseline_shift": 14,
+            "baseline_shift": 10,
         }
     if group == "lower_x":
         return {
-            "scale_range": (0.30, 0.36),
-            "width_factor": 0.90,
+            "scale_range": (0.33, 0.36),
+            "width_factor": 0.92,
             "baseline_shift": 0,
         }
     if group == "digit":
         return {
-            "scale_range": (0.36, 0.44),
-            "width_factor": 0.94,
+            "scale_range": (0.34, 0.39),
+            "width_factor": 0.92,
             "baseline_shift": 0,
         }
     if group == "symbol":
         return {
-            "scale_range": (0.28, 0.38),
+            "scale_range": (0.26, 0.32),
             "width_factor": 0.85,
             "baseline_shift": 0,
         }
 
     return {
-        "scale_range": (0.32, 0.40),
+        "scale_range": (0.33, 0.37),
         "width_factor": 0.92,
         "baseline_shift": 0,
     }
