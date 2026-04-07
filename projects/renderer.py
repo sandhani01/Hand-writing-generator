@@ -1,6 +1,7 @@
 import os
 import random
 import argparse
+import re
 import numpy as np
 from pathlib import Path
 from PIL import Image, ImageFilter, ImageEnhance
@@ -42,6 +43,7 @@ DEFAULT_CFG = {
     "stroke_gain": 1.28,
     "edge_roughness": 0.0,
     "texture_blend": 0.08,
+    "metric_overrides": {},
 }
 
 ASCENDERS = set("bdfhklt")
@@ -83,6 +85,54 @@ SYMBOL_FOLDER_MAP = {
     ".": "dot",
 }
 
+DEFAULT_CHAR_METRICS = {
+    "upper": {
+        "scale_range": (0.48, 0.54),
+        "width_factor": 1.00,
+        "baseline_shift": 0,
+    },
+    "lower_asc": {
+        "scale_range": (0.41, 0.45),
+        "width_factor": 0.96,
+        "baseline_shift": 0,
+    },
+    "lower_desc": {
+        "scale_range": (0.46, 0.52),
+        "width_factor": 0.96,
+        "baseline_shift": 16,
+    },
+    "lower_x": {
+        "scale_range": (0.33, 0.36),
+        "width_factor": 0.92,
+        "baseline_shift": 0,
+    },
+    "digit": {
+        "scale_range": (0.34, 0.39),
+        "width_factor": 0.92,
+        "baseline_shift": 0,
+    },
+    "comma": {
+        "scale_range": (0.28, 0.34),
+        "width_factor": 0.70,
+        "baseline_shift": 10,
+    },
+    "dot": {
+        "scale_range": (0.22, 0.28),
+        "width_factor": 0.62,
+        "baseline_shift": 0,
+    },
+    "symbol": {
+        "scale_range": (0.54, 0.60),
+        "width_factor": 1.50,
+        "baseline_shift": 0,
+    },
+    "other": {
+        "scale_range": (0.33, 0.37),
+        "width_factor": 0.92,
+        "baseline_shift": 0,
+    },
+}
+
 
 def get_folder_name(char):
     if char.isupper():
@@ -118,76 +168,52 @@ def get_char_group(char):
     return "other"
 
 
-def get_char_metrics(char):
+def get_char_metrics(char, cfg=None):
     group = get_char_group(char)
+    metrics = DEFAULT_CHAR_METRICS.get(group, DEFAULT_CHAR_METRICS["other"]).copy()
 
-    if group == "upper":
-        return {
-            "scale_range": (0.48, 0.54),
-            "width_factor": 1.00,
-            "baseline_shift": 0,
-        }
-    if group == "lower_asc":
-        return {
-            "scale_range": (0.41, 0.45),
-            "width_factor": 0.96,
-            "baseline_shift": 0,
-        }
-    if group == "lower_desc":
-        return {
-            "scale_range": (0.46, 0.52),
-            "width_factor": 0.96,
-            "baseline_shift": 16,
-        }
-    if group == "lower_x":
-        return {
-            "scale_range": (0.33, 0.36),
-            "width_factor": 0.92,
-            "baseline_shift": 0,
-        }
-    if group == "digit":
-        return {
-            "scale_range": (0.34, 0.39),
-            "width_factor": 0.92,
-            "baseline_shift": 0,
-        }
-    if group == "comma":
-        return {
-            "scale_range": (0.28, 0.34),
-            "width_factor": 0.70,
-            "baseline_shift": 10,
-        }
-    if group == "dot":
-        return {
-            "scale_range": (0.22, 0.28),
-            "width_factor": 0.62,
-            "baseline_shift": 0,
-        }
-    if group == "symbol":
-        return {
-            "scale_range": (0.54, 0.60),
-            "width_factor": 1.50,
-            "baseline_shift": 0,
-        }
+    if not cfg:
+        return metrics
 
-    return {
-        "scale_range": (0.33, 0.37),
-        "width_factor": 0.92,
-        "baseline_shift": 0,
-    }
+    overrides = cfg.get("metric_overrides", {}).get(group, {})
+    scale_multiplier = float(overrides.get("scale_multiplier", 1.0))
+    width_multiplier = float(overrides.get("width_multiplier", 1.0))
+    baseline_delta = float(overrides.get("baseline_shift", 0.0))
+
+    min_scale, max_scale = metrics["scale_range"]
+    metrics["scale_range"] = (
+        min_scale * scale_multiplier,
+        max_scale * scale_multiplier,
+    )
+    metrics["width_factor"] *= width_multiplier
+    metrics["baseline_shift"] += baseline_delta
+
+    return metrics
 
 
 def estimate_word_width(word, cfg):
     width = 0
 
     for c in word:
-        metrics = get_char_metrics(c)
+        metrics = get_char_metrics(c, cfg)
         min_scale, max_scale = metrics["scale_range"]
         scale = ((min_scale + max_scale) / 2) * cfg["render_scale_multiplier"]
         char_width = cfg["glyph_size"] * scale * metrics["width_factor"]
         width += char_width + cfg["char_spacing"]
 
     return int(width)
+
+
+def estimate_space_width(space_run, cfg):
+    total = 0
+
+    for char in space_run:
+        if char == "\t":
+            total += cfg["word_spacing"] * 4
+        else:
+            total += cfg["word_spacing"]
+
+    return int(total)
 
 
 def resolve_project_path(path_like):
@@ -377,7 +403,7 @@ def render_char(page, char, library, cfg, x, baseline, glyph_cache):
         return x + cfg["word_spacing"]
 
     glyph = random.choice(samples)
-    metrics = get_char_metrics(char)
+    metrics = get_char_metrics(char, cfg)
 
     angle = random.uniform(*cfg["rotation_range"])
     pressure = random.uniform(cfg["pressure_min"], cfg["pressure_max"])
@@ -421,45 +447,58 @@ def render_text(text, library, cfg):
 
     margin_left = cfg["margin_left"]
     usable_width = cfg["page_width"] - margin_left - cfg["margin_right"]
+    max_baseline = cfg["page_height"] - cfg["margin_bottom"]
+    baseline = cfg["margin_top"]
+    lines = text.split("\n")
 
-    words = [w for w in text.split(" ") if w]
+    for line_index, line in enumerate(lines):
+        if line_index > 0:
+            baseline += cfg["line_height"]
 
-    x = margin_left
-    y = cfg["margin_top"]
+        if baseline > max_baseline:
+            break
 
-    baseline = y
-    line_drift = 0.0
+        x = margin_left
+        line_drift = 0.0
 
-    for word in words:
+        if line == "":
+            continue
 
-        word_width = estimate_word_width(word, cfg)
+        tokens = re.findall(r"\S+|\s+", line)
 
-        if x + word_width > margin_left + usable_width:
-            y += cfg["line_height"]
-            baseline = y
-            x = margin_left
-            line_drift = 0.0
+        for token in tokens:
+            if token.isspace():
+                x += estimate_space_width(token, cfg) + random.uniform(
+                    -cfg["word_spacing_jitter"],
+                    cfg["word_spacing_jitter"]
+                )
+                line_drift += random.uniform(
+                    -cfg["line_drift_per_word"],
+                    cfg["line_drift_per_word"]
+                ) * max(1, len(token))
+                continue
 
-        for char in word:
+            word_width = estimate_word_width(token, cfg)
 
-            x = render_char(
-                page,
-                char,
-                library,
-                cfg,
-                x,
-                baseline + line_drift,
-                None
-            )
+            if x != margin_left and x + word_width > margin_left + usable_width:
+                baseline += cfg["line_height"]
 
-        x += cfg["word_spacing"] + random.uniform(
-            -cfg["word_spacing_jitter"],
-            cfg["word_spacing_jitter"]
-        )
-        line_drift += random.uniform(
-            -cfg["line_drift_per_word"],
-            cfg["line_drift_per_word"]
-        )
+                if baseline > max_baseline:
+                    return page
+
+                x = margin_left
+                line_drift = 0.0
+
+            for char in token:
+                x = render_char(
+                    page,
+                    char,
+                    library,
+                    cfg,
+                    x,
+                    baseline + line_drift,
+                    None
+                )
 
     return page
 
