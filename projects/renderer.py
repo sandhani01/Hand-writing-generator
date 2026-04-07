@@ -48,21 +48,52 @@ ASCENDERS = set("bdfhklt")
 DESCENDERS = set("gjpqy")
 X_HEIGHT_LOWER = set("acemnorsuvwxz")
 
+SYMBOL_FOLDER_MAP = {
+    "!": "exclam",
+    "@": "at",
+    "#": "hash",
+    "$": "dollar",
+    "%": "percent",
+    "^": "caret",
+    "&": "ampersand",
+    "*": "asterisk",
+    "(": "lparen",
+    ")": "rparen",
+    "-": "dash",
+    "_": "underscore",
+    "=": "equals",
+    "+": "plus",
+    "[": "lbracket",
+    "]": "rbracket",
+    "{": "lbrace",
+    "}": "rbrace",
+    ";": "semicolon",
+    ":": "colon",
+    "'": "apostrophe",
+    "\"": "quote",
+    "<": "lt",
+    ">": "gt",
+    "/": "slash",
+    "?": "question",
+    "\\": "backslash",
+    "|": "pipe",
+    "`": "backtick",
+    "~": "tilde",
+    ",": "comma",
+    ".": "dot",
+}
+
 
 def get_folder_name(char):
     if char.isupper():
         return char + "_upper"
     if char.islower():
         return char + "_lower"
-    if char == "-":
-        return "dash"
-    if char == "*":
-        return "star"
-    if char == ",":
-        return "comma"
-    if char == ".":
-        return "dot"
-    return char
+    if char.isdigit():
+        return char
+    if char in SYMBOL_FOLDER_MAP:
+        return SYMBOL_FOLDER_MAP[char]
+    return str(char)
 
 
 def get_char_group(char):
@@ -74,8 +105,6 @@ def get_char_group(char):
         return "comma"
     if char == ".":
         return "dot"
-    if char in "-*.,":
-        return "symbol"
     if char in ASCENDERS:
         return "lower_asc"
     if char in DESCENDERS:
@@ -84,6 +113,8 @@ def get_char_group(char):
         return "lower_x"
     if char.islower():
         return "lower_other"
+    if not char.isalnum():
+        return "symbol"
     return "other"
 
 
@@ -104,9 +135,9 @@ def get_char_metrics(char):
         }
     if group == "lower_desc":
         return {
-            "scale_range": (0.45, 0.50),
+            "scale_range": (0.46, 0.52),
             "width_factor": 0.96,
-            "baseline_shift": 10,
+            "baseline_shift": 16,
         }
     if group == "lower_x":
         return {
@@ -134,8 +165,8 @@ def get_char_metrics(char):
         }
     if group == "symbol":
         return {
-            "scale_range": (0.26, 0.32),
-            "width_factor": 0.85,
+            "scale_range": (0.54, 0.60),
+            "width_factor": 1.50,
             "baseline_shift": 0,
         }
 
