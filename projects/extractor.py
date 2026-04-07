@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-DEFAULT_IMAGE_PATH = "handwriting.jpg"
+DEFAULT_IMAGE_PATH = str(Path("handwriting_samples") / "handwriting.jpg")
 DEFAULT_OUTPUT_ROOT = "glyph_sets"
 
 GRID_ROWS = 8
@@ -26,8 +26,7 @@ def default_output_folder(image_path):
 
 
 def default_debug_output_path(output_folder):
-    output_path = Path(output_folder)
-    return str(output_path.parent / f"{output_path.name}_debug.png")
+    return str(Path(output_folder) / "detected_grid_debug.png")
 
 
 def folder_name(letter):
