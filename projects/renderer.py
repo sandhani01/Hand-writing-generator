@@ -5,6 +5,8 @@ import numpy as np
 from pathlib import Path
 from PIL import Image, ImageFilter, ImageEnhance
 
+PROJECT_DIR = Path(__file__).resolve().parent
+
 
 DEFAULT_CFG = {
     "page_width": 1240,
@@ -15,16 +17,16 @@ DEFAULT_CFG = {
     "margin_right": 30,
     "margin_bottom": 180,
 
-    "backgrounds_dir": "backgrounds",
+    "backgrounds_dir": str(PROJECT_DIR / "backgrounds"),
     "background_file": "ruled.png",
 
-    "glyphs_dir": "glyph_sets",
+    "glyphs_dir": str(PROJECT_DIR / "glyph_sets"),
     "glyph_size": 44,
     "render_scale_multiplier": 1.42,
 
     "line_height": 82,
 
-    "char_spacing": 2,
+    "char_spacing": -1,
     "word_spacing": 26,
     "word_spacing_jitter": 3,
     "line_drift_per_word": 0.18,
@@ -68,6 +70,10 @@ def get_char_group(char):
         return "upper"
     if char.isdigit():
         return "digit"
+    if char == ",":
+        return "comma"
+    if char == ".":
+        return "dot"
     if char in "-*.,":
         return "symbol"
     if char in ASCENDERS:
@@ -114,6 +120,18 @@ def get_char_metrics(char):
             "width_factor": 0.92,
             "baseline_shift": 0,
         }
+    if group == "comma":
+        return {
+            "scale_range": (0.28, 0.34),
+            "width_factor": 0.70,
+            "baseline_shift": 10,
+        }
+    if group == "dot":
+        return {
+            "scale_range": (0.22, 0.28),
+            "width_factor": 0.62,
+            "baseline_shift": 0,
+        }
     if group == "symbol":
         return {
             "scale_range": (0.26, 0.32),
@@ -141,6 +159,15 @@ def estimate_word_width(word, cfg):
     return int(width)
 
 
+def resolve_project_path(path_like):
+    path = Path(path_like)
+    if path.is_absolute():
+        return path
+    if path.exists():
+        return path.resolve()
+    return (PROJECT_DIR / path).resolve()
+
+
 def split_glyph_roots(glyphs_dir):
     if isinstance(glyphs_dir, (list, tuple)):
         raw_roots = glyphs_dir
@@ -156,7 +183,7 @@ def split_glyph_roots(glyphs_dir):
         parts = [part.strip() for part in str(root).split(",") if part.strip()]
         roots.extend(parts)
 
-    return [Path(root) for root in roots]
+    return [resolve_project_path(root) for root in roots]
 
 
 def load_glyph_library(glyphs_dir):
@@ -198,7 +225,7 @@ def load_glyph_library(glyphs_dir):
 
 
 def load_background(cfg):
-    bg_path = Path(cfg["backgrounds_dir"]) / cfg["background_file"]
+    bg_path = resolve_project_path(cfg["backgrounds_dir"]) / cfg["background_file"]
 
     if not bg_path.exists():
         page = Image.new(

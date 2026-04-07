@@ -5,15 +5,17 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-DEFAULT_IMAGE_PATH = str(Path("handwriting_samples") / "handwriting.jpg")
-DEFAULT_OUTPUT_ROOT = "glyph_sets"
+PROJECT_DIR = Path(__file__).resolve().parent
+DEFAULT_IMAGE_DIR = PROJECT_DIR / "handwriting_samples"
+DEFAULT_IMAGE_PATH = str(DEFAULT_IMAGE_DIR / "handwriting.jpg")
+DEFAULT_OUTPUT_ROOT = PROJECT_DIR / "glyph_sets"
 
 GRID_ROWS = 8
 GRID_COLS = 8
 MIN_COMPONENT_AREA = 6
 PRIMARY_COMPONENT_AREA = 50
 
-LABELS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-*")
+LABELS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.")
 
 ASCENDERS = set("bdfhklt")
 DESCENDERS = set("gjpqy")
@@ -22,11 +24,36 @@ X_HEIGHT_LOWER = set("acemnorsuvwxz")
 
 def default_output_folder(image_path):
     stem = Path(image_path).stem
-    return str(Path(DEFAULT_OUTPUT_ROOT) / stem)
+    return str(DEFAULT_OUTPUT_ROOT / stem)
 
 
 def default_debug_output_path(output_folder):
     return str(Path(output_folder) / "detected_grid_debug.png")
+
+
+def discover_handwriting_images(image_dir=DEFAULT_IMAGE_DIR):
+    directory = Path(image_dir)
+
+    if not directory.exists():
+        raise FileNotFoundError(f"Handwriting samples folder not found: {directory}")
+
+    images = sorted(directory.glob("handwriting*.jpg"))
+
+    if not images:
+        raise FileNotFoundError(
+            f"No handwriting sample images found in: {directory}"
+        )
+
+    return images
+
+
+def resolve_project_path(path_like):
+    path = Path(path_like)
+    if path.is_absolute():
+        return path
+    if path.exists():
+        return path.resolve()
+    return (PROJECT_DIR / path).resolve()
 
 
 def folder_name(letter):
@@ -34,10 +61,10 @@ def folder_name(letter):
         return letter + "_upper"
     if letter.islower():
         return letter + "_lower"
-    if letter == "-":
-        return "dash"
-    if letter == "*":
-        return "star"
+    if letter == ",":
+        return "comma"
+    if letter == ".":
+        return "dot"
     return letter
 
 
@@ -46,7 +73,7 @@ def glyph_group(letter):
         return "upper"
     if letter.isdigit():
         return "digit"
-    if letter in "-*":
+    if letter in ",.":
         return "symbol"
     if letter in ASCENDERS:
         return "lower_asc"
@@ -347,11 +374,17 @@ def save_debug_overlay(image, cells, path):
 
 
 def extract(image_path=DEFAULT_IMAGE_PATH, output_folder=None, debug_output_path=None):
+    image_path = str(resolve_project_path(image_path))
+
     if output_folder is None:
         output_folder = default_output_folder(image_path)
+    else:
+        output_folder = str(resolve_project_path(output_folder))
 
     if debug_output_path is None:
         debug_output_path = default_debug_output_path(output_folder)
+    else:
+        debug_output_path = str(resolve_project_path(debug_output_path))
 
     os.makedirs(output_folder, exist_ok=True)
     Path(debug_output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -444,14 +477,25 @@ def extract(image_path=DEFAULT_IMAGE_PATH, output_folder=None, debug_output_path
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image", default=DEFAULT_IMAGE_PATH)
+    parser.add_argument("--image")
     parser.add_argument("--output")
     parser.add_argument("--debug-output")
 
     args = parser.parse_args()
 
-    extract(
-        image_path=args.image,
-        output_folder=args.output,
-        debug_output_path=args.debug_output,
-    )
+    if args.image:
+        extract(
+            image_path=args.image,
+            output_folder=args.output,
+            debug_output_path=args.debug_output,
+        )
+    else:
+        if args.output or args.debug_output:
+            raise ValueError(
+                "--output and --debug-output require --image. "
+                "Without --image, extractor processes every handwriting*.jpg sample automatically."
+            )
+
+        for image_path in discover_handwriting_images():
+            print(f"\n=== Extracting dataset from {image_path.name} ===")
+            extract(image_path=str(image_path))
