@@ -19,8 +19,8 @@ DEFAULT_CFG = {
     "background_file": "ruled.png",
 
     "glyphs_dir": "glyph_sets",
-    "glyph_size": 42,
-    "render_scale_multiplier": 1.36,
+    "glyph_size": 44,
+    "render_scale_multiplier": 1.42,
 
     "line_height": 82,
 
@@ -37,7 +37,7 @@ DEFAULT_CFG = {
 
     "pressure_min": 0.90,
     "pressure_max": 0.98,
-    "stroke_gain": 1.20,
+    "stroke_gain": 1.28,
     "edge_roughness": 0.0,
     "texture_blend": 0.08,
 }
