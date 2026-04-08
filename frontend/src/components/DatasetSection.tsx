@@ -25,8 +25,8 @@ export function DatasetSection({
         title="Datasets"
         subtitle={
           isCodingMode
-            ? "These are the alphabet and coding datasets in your personal database. Uploading a new grid adds another dataset."
-            : "These are the alphabet datasets in your personal database. Uploading a new grid adds another dataset."
+            ? "Your alphabet and coding datasets. Upload a new grid to add another dataset."
+            : "Your alphabet datasets. Upload a new grid to add another dataset."
         }
       >
         <div
@@ -56,9 +56,9 @@ export function DatasetSection({
           className={`upload-grid ${isCodingMode ? "" : "upload-grid--single"}`}
         >
           <label className="upload-tile">
-            <span className="upload-tile__title">Alphabet grid (8x8)</span>
+            <span className="upload-tile__title">Alphabet dataset (8×8)</span>
             <span className="upload-tile__hint">
-              Add a new alphabet dataset from handwritten letters and digits.
+              Add a new dataset from your handwritten alphabet (letters + digits).
             </span>
             <input
               type="file"
@@ -70,9 +70,9 @@ export function DatasetSection({
           </label>
           {isCodingMode ? (
             <label className="upload-tile">
-              <span className="upload-tile__title">Coding grid (6x5)</span>
+              <span className="upload-tile__title">Coding symbols dataset (6×5)</span>
               <span className="upload-tile__hint">
-                Add a new coding-symbol dataset for brackets, operators, and punctuation.
+                Add a new dataset from your handwritten code symbols (brackets, operators, punctuation).
               </span>
               <input
                 type="file"

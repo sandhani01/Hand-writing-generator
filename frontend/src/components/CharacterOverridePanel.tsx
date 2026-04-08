@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CHARACTER_OVERRIDE_CONTROLS,
   EMPTY_CHARACTER_OVERRIDE,
@@ -140,46 +140,45 @@ export function CharacterOverridePanel({
     [textCharacters, overrideCharacters]
   );
 
-  useEffect(() => {
-    if (selectedChar || !selectableCharacters.length) {
-      return;
-    }
-    setSelectedChar(selectableCharacters[0]);
-  }, [selectableCharacters, selectedChar]);
+  // Treat an empty selection as "pick the first available character".
+  // This avoids calling setState inside an effect.
+  const effectiveSelectedChar =
+    selectedChar || selectableCharacters[0] || "";
 
-  const currentOverride = selectedChar
+  const currentOverride = effectiveSelectedChar
     ? {
         ...EMPTY_CHARACTER_OVERRIDE,
-        ...(charOverrides[selectedChar] ?? {}),
+        ...(charOverrides[effectiveSelectedChar] ?? {}),
       }
     : EMPTY_CHARACTER_OVERRIDE;
 
-  const hasCustomOverride = Boolean(selectedChar && charOverrides[selectedChar]);
+  const hasCustomOverride = Boolean(
+    effectiveSelectedChar && charOverrides[effectiveSelectedChar]
+  );
 
   return (
     <section className="control-group control-group--character">
       <div className="control-group__header">
-        <h3 className="control-group__title">Exact character fixes</h3>
+        <h3 className="control-group__title">Fix individual characters</h3>
         <p className="control-group__desc">
-          Pick one glyph and adjust only that character when it sits too high,
-          too low, too thin, or too wide.
+          When one glyph looks off, tune it without affecting the rest of
+          the page.
         </p>
       </div>
 
       {!isSupported ? (
         <p className="character-compat-warning">
-          Exact character fixes need the latest Python backend. Restart
-          <code> api_server.py </code>
+          This feature needs a recent backend build. Restart your server
           and refresh the page.
         </p>
       ) : null}
 
       <div className="character-picker">
         <label className="character-picker__field">
-          <span className="character-picker__label">Choose character</span>
+          <span className="character-picker__label">Character</span>
           <select
             className="character-picker__select"
-            value={selectedChar}
+            value={effectiveSelectedChar}
             disabled={!isSupported}
             onChange={(event) => setSelectedChar(event.target.value)}
           >
@@ -195,11 +194,11 @@ export function CharacterOverridePanel({
         </label>
 
         <label className="character-picker__field character-picker__field--manual">
-          <span className="character-picker__label">Or type one</span>
+          <span className="character-picker__label">Type one</span>
           <input
             type="text"
             className="character-picker__input"
-            value={selectedChar}
+            value={effectiveSelectedChar}
             disabled={!isSupported}
             onChange={(event) =>
               setSelectedChar(getSingleCharacter(event.target.value))
@@ -212,10 +211,10 @@ export function CharacterOverridePanel({
         <button
           type="button"
           className="btn btn--ghost"
-          disabled={!isSupported || !selectedChar || !hasCustomOverride}
+          disabled={!isSupported || !effectiveSelectedChar || !hasCustomOverride}
           onClick={() => {
-            if (selectedChar) {
-              onReset(selectedChar);
+            if (effectiveSelectedChar) {
+              onReset(effectiveSelectedChar);
             }
           }}
         >
@@ -224,13 +223,13 @@ export function CharacterOverridePanel({
       </div>
 
       {textCharacters.length ? (
-        <div className="character-chip-list" aria-label="Characters in compose box">
+        <div className="character-chip-list" aria-label="Characters in your text">
           {textCharacters.map((char, index) => (
             <button
               key={getCharacterKey(char, index)}
               type="button"
               className={`character-chip ${
-                selectedChar === char ? "is-active" : ""
+                effectiveSelectedChar === char ? "is-active" : ""
               } ${charOverrides[char] ? "has-override" : ""}`}
               disabled={!isSupported}
               onClick={() => setSelectedChar(char)}
@@ -241,13 +240,13 @@ export function CharacterOverridePanel({
         </div>
       ) : null}
 
-      {selectedChar && isSupported ? (
+      {effectiveSelectedChar && isSupported ? (
         <div className="controls controls--advanced controls--character">
           {CHARACTER_OVERRIDE_CONTROLS.map((control) => {
             const value = currentOverride[control.key];
             const defaultValue = EMPTY_CHARACTER_OVERRIDE[control.key];
             const valueText = formatCharacterControlValue(control, value);
-            const rangeId = `char-override-${selectedChar}-${control.key}`;
+            const rangeId = `char-override-${effectiveSelectedChar}-${control.key}`;
             const hintId = `${rangeId}-hint`;
             const isDefault = Math.abs(value - defaultValue) <= control.step / 2;
 
@@ -265,7 +264,9 @@ export function CharacterOverridePanel({
                       type="button"
                       className="btn btn--ghost btn--mini"
                       disabled={isDefault}
-                      onClick={() => onResetField(selectedChar, control.key)}
+                      onClick={() =>
+                        onResetField(effectiveSelectedChar, control.key)
+                      }
                     >
                       Reset
                     </button>
@@ -286,7 +287,7 @@ export function CharacterOverridePanel({
                   aria-describedby={hintId}
                   onChange={(event) =>
                     onChange(
-                      selectedChar,
+                      effectiveSelectedChar,
                       control.key,
                       Number(event.target.value)
                     )
@@ -301,7 +302,7 @@ export function CharacterOverridePanel({
         </div>
       ) : (
         <p className="character-picker__empty">
-          Type some text in Compose or choose a character to unlock exact glyph
+          Type some text in Compose, or pick a character to unlock exact
           tuning.
         </p>
       )}

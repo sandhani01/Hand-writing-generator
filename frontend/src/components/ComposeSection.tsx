@@ -17,18 +17,18 @@ export function ComposeSection({ isCodingMode, text, onTextChange }: Props) {
         title="Compose"
         subtitle={
           isCodingMode
-            ? "Blank lines stay blank. Use symbols that match your coding grid for best results."
-            : "Blank lines in the box stay blank in the render. Edit freely."
+            ? "Keep blank lines. Use symbols from your coding dataset for best results."
+            : "Blank lines in the box stay blank in the output."
         }
       >
         <div className="compose-field">
           <label className="compose-label" htmlFor={composeId}>
-            Text to render
+            {isCodingMode ? "Text / code" : "Text"}
           </label>
           <p id={descId} className="compose-field__hint">
             {isCodingMode
-              ? "Supports code-like symbols when a coding dataset is available."
-              : "Line breaks in the editor are preserved in the image."}
+              ? "Supports brackets, operators, and punctuation when you have a coding dataset."
+              : "Line breaks in your editor are preserved in the image."}
           </p>
           <textarea
             id={composeId}

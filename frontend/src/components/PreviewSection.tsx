@@ -11,7 +11,7 @@ export function PreviewSection({ previewUrl }: Props) {
         <WorkflowSection
           step="04"
           title="Preview"
-          subtitle="Latest render. Regenerate after you change text or controls."
+          subtitle="Your most recent render. Re-run after you change text or tuning."
           className="workflow-section--tight"
         >
           <div
@@ -30,8 +30,7 @@ export function PreviewSection({ previewUrl }: Props) {
               <div className="preview-empty">
                 <p className="preview-empty__title">No preview yet</p>
                 <p className="preview-empty__text">
-                  Add text, adjust tuning if needed, then choose{" "}
-                  <strong>Render page</strong> above.
+                  Add text, then click <strong>Render page</strong> to generate your image.
                 </p>
               </div>
             )}

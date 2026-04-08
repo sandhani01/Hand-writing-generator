@@ -35,8 +35,8 @@ export function AppHeader({
         </div>
         <p className="app-header__lede" id="app-page-desc">
           {isCodingMode
-            ? "Use your alphabet and coding datasets, compose, tune, then export a PNG."
-            : "Use your alphabet datasets, compose, tune, then export a PNG."}
+            ? "Use your datasets for letters and code symbols, then compose, tune, and export a PNG."
+            : "Use your alphabet datasets, then compose, tune, and export a PNG."}
         </p>
       </div>
       <nav className="app-header__toolbar" aria-label="Workspace actions">
@@ -46,7 +46,7 @@ export function AppHeader({
           className="btn btn--ghost"
           onClick={onChangeAssignmentType}
         >
-          Change type
+          Choose mode
         </button>
         <button
           type="button"
@@ -54,7 +54,7 @@ export function AppHeader({
           onClick={onRefreshLibrary}
           disabled={isLoadingDatasets}
         >
-          {isLoadingDatasets ? "Refreshing..." : "Refresh datasets"}
+          {isLoadingDatasets ? "Refreshing..." : "Refresh dataset counts"}
         </button>
         <button type="button" className="btn btn--ghost" onClick={onResetSession}>
           Reset workspace

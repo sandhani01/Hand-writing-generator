@@ -976,14 +976,14 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
   margin: 0;
   padding: 0.8rem 0.85rem;
   border-radius: var(--radius-md);
-  border: 1px dashed var(--line-strong);
+  border: 1px solid var(--line);
   background: var(--bg-elevated);
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .upload-tile:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
   background: var(--bg-surface-hover);
 }
 
@@ -1352,7 +1352,7 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
 .preview-frame {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  min-height: min(480px, 52vh);
+  min-height: min(520px, 58vh);
   display: grid;
   place-items: center;
   background-color: var(--preview-canvas);

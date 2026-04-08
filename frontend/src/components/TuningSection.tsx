@@ -66,7 +66,7 @@ export function TuningSection({
       <WorkflowSection
         step="03"
         title="Tuning"
-        subtitle="Core spacing controls stay visible. Advanced groups ink, margins, and glyph families."
+        subtitle="Make spacing and ink feel right. Basic controls stay visible; fine-tuning is optional."
         headerExtra={
           <div className="workflow-actions">
             <button
@@ -74,7 +74,7 @@ export function TuningSection({
               className="btn btn--ghost"
               onClick={onResetAllFilters}
             >
-              Reset filters
+              Reset tuning
             </button>
             <button
               type="button"
@@ -104,10 +104,10 @@ export function TuningSection({
         <div className="advanced-bar">
           <div>
             <h3 id={advancedLabelId} className="advanced-bar__title">
-              Advanced
+              Fine-tuning
             </h3>
             <p className="advanced-bar__text">
-              Letter classes, page margins, drift, and ink texture.
+              Ink, margins, and letter families.
             </p>
           </div>
           <button
@@ -123,7 +123,7 @@ export function TuningSection({
               data-open={showAdvanced}
               aria-hidden
             />
-            {showAdvanced ? "Hide advanced" : "Show advanced"}
+            {showAdvanced ? "Hide fine-tuning" : "Show fine-tuning"}
           </button>
         </div>
 

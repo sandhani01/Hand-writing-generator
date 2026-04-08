@@ -73,7 +73,7 @@ export const BASIC_CONTROLS: SliderConfig[] = [
     min: 40,
     max: 180,
     step: 1,
-    description: "Vertical distance between rendered lines.",
+    description: "Vertical spacing between rendered lines.",
   },
   {
     key: "charSpacing",
@@ -81,7 +81,7 @@ export const BASIC_CONTROLS: SliderConfig[] = [
     min: -12,
     max: 30,
     step: 1,
-    description: "Space between neighboring letters inside words.",
+    description: "Spacing between letters inside a word.",
   },
   {
     key: "wordSpacing",
@@ -89,15 +89,15 @@ export const BASIC_CONTROLS: SliderConfig[] = [
     min: 8,
     max: 70,
     step: 1,
-    description: "Gap inserted for spaces in the compose box.",
+    description: "Extra gap for spaces in your text.",
   },
   {
     key: "jitter",
-    label: "Jitter",
+    label: "Wobble",
     min: 0,
     max: 12,
     step: 0.5,
-    description: "Overall natural wobble for spacing, drift, and rotation.",
+    description: "Natural wobble for spacing, drift, and rotation.",
     format: (value) => value.toFixed(1),
   },
 ];
@@ -106,7 +106,7 @@ export const ADVANCED_GROUPS: ControlGroup[] = [
   {
     title: "Letter Families",
     description:
-      "Tune each family separately: middle letters, ascenders, descenders, numbers, and punctuation.",
+      "Adjust letter shapes: middle letters, ascenders, descenders, digits, and punctuation.",
     controls: [
       {
         key: "xHeightScale",
@@ -199,9 +199,9 @@ export const ADVANCED_GROUPS: ControlGroup[] = [
     ],
   },
   {
-    title: "Flow And Layout",
+    title: "Layout",
     description:
-      "These controls affect how lines breathe and how the page is laid out.",
+      "Overall size, margins, baseline wobble, and line drift.",
     controls: [
       {
         key: "overallScale",
@@ -283,13 +283,13 @@ export const ADVANCED_GROUPS: ControlGroup[] = [
     ],
   },
   {
-    title: "Ink And Texture",
+    title: "Ink & Texture",
     description:
-      "Use these when you want the letters to feel darker, rougher, or more scan-like.",
+      "Darkness, rough edges, and paper blending.",
     controls: [
       {
         key: "pressureMin",
-        label: "Pressure minimum",
+        label: "Ink pressure (min)",
         min: 0.4,
         max: 1.2,
         step: 0.01,
@@ -298,7 +298,7 @@ export const ADVANCED_GROUPS: ControlGroup[] = [
       },
       {
         key: "pressureMax",
-        label: "Pressure maximum",
+        label: "Ink pressure (max)",
         min: 0.5,
         max: 1.5,
         step: 0.01,
