@@ -78,7 +78,7 @@ export function AssignmentModePicker({ onSelect }: Props) {
               <div className="mode-instructions__text">
                 <div className="mode-instructions__name">Simple assignments</div>
                 <div className="mode-instructions__detail">
-                  Essays, notes, and everyday text. Alphabet grid session and library only.
+                  Essays, notes, and everyday text. Uses your alphabet datasets only.
                 </div>
               </div>
             </button>
@@ -98,7 +98,7 @@ export function AssignmentModePicker({ onSelect }: Props) {
               <div className="mode-instructions__text">
                 <div className="mode-instructions__name">Coding assignments</div>
                 <div className="mode-instructions__detail">
-                  Code and symbols. Alphabet and coding grids (session and library).
+                  Code and symbols. Uses your alphabet and coding datasets.
                 </div>
               </div>
             </button>

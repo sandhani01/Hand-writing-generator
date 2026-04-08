@@ -27,7 +27,6 @@ import type {
   ExtractResponse,
   NumericOptionKey,
   RenderOptions,
-  UploadCounts,
   UploadType,
 } from "./types";
 
@@ -38,11 +37,7 @@ export default function App() {
   const apiUrl = (path: string) => `${apiBase}${path}`;
 
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [uploadCounts, setUploadCounts] = useState<UploadCounts>({
-    handwriting: 0,
-    coding: 0,
-  });
-  const [availableCounts, setAvailableCounts] = useState<UploadCounts>({
+  const [availableCounts, setAvailableCounts] = useState({
     handwriting: 0,
     coding: 0,
   });
@@ -65,11 +60,9 @@ export default function App() {
   const [options, setOptions] = useState<RenderOptions>(FALLBACK_OPTIONS);
   const [supportsCharacterOverrides, setSupportsCharacterOverrides] =
     useState(false);
-  const [copyHint, setCopyHint] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
 
-  const canRender =
-    uploadCounts.handwriting > 0 || availableCounts.handwriting > 0;
+  const canRender = availableCounts.handwriting > 0;
 
   const setNumericOption = (key: NumericOptionKey, value: number) => {
     setOptions((current) => ({ ...current, [key]: value }));
@@ -172,10 +165,6 @@ export default function App() {
       if (data.sessionId) {
         setSessionId(data.sessionId);
       }
-      setUploadCounts({
-        handwriting: data.datasets?.handwriting?.length || 0,
-        coding: data.datasets?.coding?.length || 0,
-      });
       await loadDatasets();
     } catch (error) {
       setUploadError(
@@ -298,7 +287,6 @@ export default function App() {
 
   const resetSession = async () => {
     setSessionId(null);
-    setUploadCounts({ handwriting: 0, coding: 0 });
     setUploadError(null);
     setRenderError(null);
     setOptions(defaultOptions);
@@ -322,20 +310,6 @@ export default function App() {
   const openAssignmentPicker = () => {
     setAssignmentMode(null);
     clearStoredAssignmentMode();
-  };
-
-  const copySessionId = async () => {
-    if (!sessionId) {
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(sessionId);
-      setCopyHint("Copied");
-      window.setTimeout(() => setCopyHint(null), 2000);
-    } catch {
-      setCopyHint("Copy failed");
-      window.setTimeout(() => setCopyHint(null), 2000);
-    }
   };
 
   const isCodingMode = assignmentMode === "coding";
@@ -374,13 +348,9 @@ export default function App() {
         <div className="layout__stack">
           <DatasetSection
             isCodingMode={isCodingMode}
-            sessionId={sessionId}
-            uploadCounts={uploadCounts}
             availableCounts={availableCounts}
             uploadError={uploadError}
             isUploading={isUploading}
-            copyHint={copyHint}
-            onCopySession={copySessionId}
             onUpload={handleUpload}
           />
 

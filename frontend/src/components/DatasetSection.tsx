@@ -5,90 +5,46 @@ import type { UploadCounts, UploadType } from "../types";
 
 type Props = {
   isCodingMode: boolean;
-  sessionId: string | null;
-  uploadCounts: UploadCounts;
   availableCounts: UploadCounts;
   uploadError: string | null;
   isUploading: boolean;
-  copyHint: string | null;
-  onCopySession: () => void;
   onUpload: (event: ChangeEvent<HTMLInputElement>, type: UploadType) => void;
 };
 
 export function DatasetSection({
   isCodingMode,
-  sessionId,
-  uploadCounts,
   availableCounts,
   uploadError,
   isUploading,
-  copyHint,
-  onCopySession,
   onUpload,
 }: Props) {
   return (
     <article className="surface surface--raised">
       <WorkflowSection
         step="01"
-        title="Dataset library"
+        title="Datasets"
         subtitle={
           isCodingMode
-            ? "Upload alphabet and coding grids, or use server library sets. Session stacks with the library at render time."
-            : "Alphabet handwriting only in this mode. Upload a grid or use the library. Session stacks with the library at render time."
-        }
-        headerExtra={
-          sessionId ? (
-            <div className="session-chip">
-              <span className="session-chip__label">Session</span>
-              <code className="session-chip__id" title={sessionId}>
-                {sessionId.length > 14
-                  ? `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`
-                  : sessionId}
-              </code>
-              <button
-                type="button"
-                className="btn btn--mini"
-                onClick={onCopySession}
-              >
-                Copy ID
-              </button>
-              {copyHint ? (
-                <span className="session-chip__hint" role="status" aria-live="polite">
-                  {copyHint}
-                </span>
-              ) : null}
-            </div>
-          ) : null
+            ? "These are the alphabet and coding datasets in your personal database. Uploading a new grid adds another dataset."
+            : "These are the alphabet datasets in your personal database. Uploading a new grid adds another dataset."
         }
       >
         <div
-          className={`library-metrics ${isCodingMode ? "library-metrics--coding" : "library-metrics--simple"}`}
+          className={`library-metrics ${
+            isCodingMode ? "library-metrics--coding" : "library-metrics--simple"
+          }`}
           role="group"
-          aria-label="Glyph counts by source"
+          aria-label="Dataset counts"
         >
-          <div className="metric-pill">
-            <span className="metric-pill__label">Session · alphabet</span>
-            <strong className="metric-pill__value" aria-live="polite">
-              {uploadCounts.handwriting}
-            </strong>
-          </div>
-          {isCodingMode ? (
-            <div className="metric-pill">
-              <span className="metric-pill__label">Session · coding</span>
-              <strong className="metric-pill__value" aria-live="polite">
-                {uploadCounts.coding}
-              </strong>
-            </div>
-          ) : null}
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Library · alphabet</span>
+            <span className="metric-pill__label">Alphabet datasets</span>
             <strong className="metric-pill__value" aria-live="polite">
               {availableCounts.handwriting}
             </strong>
           </div>
           {isCodingMode ? (
             <div className="metric-pill metric-pill--accent">
-              <span className="metric-pill__label">Library · coding</span>
+              <span className="metric-pill__label">Coding datasets</span>
               <strong className="metric-pill__value" aria-live="polite">
                 {availableCounts.coding}
               </strong>
@@ -100,9 +56,9 @@ export function DatasetSection({
           className={`upload-grid ${isCodingMode ? "" : "upload-grid--single"}`}
         >
           <label className="upload-tile">
-            <span className="upload-tile__title">Alphabet grid (8×8)</span>
+            <span className="upload-tile__title">Alphabet grid (8x8)</span>
             <span className="upload-tile__hint">
-              Handwriting cells mapped to letters and digits.
+              Add a new alphabet dataset from handwritten letters and digits.
             </span>
             <input
               type="file"
@@ -114,9 +70,9 @@ export function DatasetSection({
           </label>
           {isCodingMode ? (
             <label className="upload-tile">
-              <span className="upload-tile__title">Coding grid (6×5)</span>
+              <span className="upload-tile__title">Coding grid (6x5)</span>
               <span className="upload-tile__hint">
-                Symbols for brackets, operators, and punctuation.
+                Add a new coding-symbol dataset for brackets, operators, and punctuation.
               </span>
               <input
                 type="file"
@@ -132,7 +88,7 @@ export function DatasetSection({
         {uploadError ? <ErrorBanner>{uploadError}</ErrorBanner> : null}
         {isUploading ? (
           <p className="status-line" role="status" aria-live="polite">
-            Processing upload…
+            Processing upload...
           </p>
         ) : null}
       </WorkflowSection>

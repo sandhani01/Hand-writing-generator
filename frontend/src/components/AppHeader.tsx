@@ -35,8 +35,8 @@ export function AppHeader({
         </div>
         <p className="app-header__lede" id="app-page-desc">
           {isCodingMode
-            ? "Alphabet and coding grids, compose, tune, then export a PNG."
-            : "Alphabet grids only in this mode. Compose, tune, then export a PNG."}
+            ? "Use your alphabet and coding datasets, compose, tune, then export a PNG."
+            : "Use your alphabet datasets, compose, tune, then export a PNG."}
         </p>
       </div>
       <nav className="app-header__toolbar" aria-label="Workspace actions">
@@ -54,10 +54,10 @@ export function AppHeader({
           onClick={onRefreshLibrary}
           disabled={isLoadingDatasets}
         >
-          {isLoadingDatasets ? "Refreshing…" : "Refresh library"}
+          {isLoadingDatasets ? "Refreshing..." : "Refresh datasets"}
         </button>
         <button type="button" className="btn btn--ghost" onClick={onResetSession}>
-          Reset session
+          Reset workspace
         </button>
       </nav>
     </header>

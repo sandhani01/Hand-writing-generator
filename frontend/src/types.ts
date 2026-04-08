@@ -1,6 +1,6 @@
 export type UploadType = "alphabet" | "coding";
 
-/** Simple = alphabet session/library only in UI. Coding = alphabet + coding. */
+/** Simple = alphabet datasets only in UI. Coding = alphabet + coding datasets. */
 export type AssignmentMode = "simple" | "coding";
 
 export type RenderOptions = {
