@@ -49,6 +49,9 @@ DEFAULT_CFG = {
 ASCENDERS = set("bdfhklt")
 DESCENDERS = set("gjpqy")
 X_HEIGHT_LOWER = set("acemnorsuvwxz")
+TOP_SYMBOLS = set("^'\"`")
+MID_SYMBOLS = set(":+<>=~")
+LOW_SYMBOLS = set("_")
 
 SYMBOL_FOLDER_MAP = {
     "!": "exclam",
@@ -121,6 +124,21 @@ DEFAULT_CHAR_METRICS = {
         "width_factor": 0.62,
         "baseline_shift": 0,
     },
+    "symbol_top": {
+        "scale_range": (0.50, 0.56),
+        "width_factor": 1.08,
+        "baseline_shift": -18,
+    },
+    "symbol_mid": {
+        "scale_range": (0.52, 0.58),
+        "width_factor": 1.18,
+        "baseline_shift": -10,
+    },
+    "symbol_low": {
+        "scale_range": (0.52, 0.58),
+        "width_factor": 1.22,
+        "baseline_shift": 4,
+    },
     "symbol": {
         "scale_range": (0.54, 0.60),
         "width_factor": 1.50,
@@ -155,6 +173,12 @@ def get_char_group(char):
         return "comma"
     if char == ".":
         return "dot"
+    if char in TOP_SYMBOLS:
+        return "symbol_top"
+    if char in MID_SYMBOLS:
+        return "symbol_mid"
+    if char in LOW_SYMBOLS:
+        return "symbol_low"
     if char in ASCENDERS:
         return "lower_asc"
     if char in DESCENDERS:

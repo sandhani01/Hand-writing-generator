@@ -82,6 +82,44 @@ def resolve_output_dir():
     return output_dir
 
 
+def build_frontend_default_options():
+    cfg = renderer.DEFAULT_CFG
+    rotation_range = cfg.get("rotation_range", (-2.0, 2.0))
+    rotation = max(abs(float(rotation_range[0])), abs(float(rotation_range[1])))
+
+    return {
+        "lineHeight": int(cfg["line_height"]),
+        "charSpacing": int(cfg["char_spacing"]),
+        "wordSpacing": int(cfg["word_spacing"]),
+        "jitter": 0.0,
+        "inkColor": "#{:02x}{:02x}{:02x}".format(*cfg["ink_color"]),
+        "overallScale": float(cfg["render_scale_multiplier"]),
+        "marginLeft": int(cfg["margin_left"]),
+        "marginTop": int(cfg["margin_top"]),
+        "marginRight": int(cfg["margin_right"]),
+        "marginBottom": int(cfg["margin_bottom"]),
+        "baselineJitter": float(cfg["baseline_jitter"]),
+        "lineDriftPerWord": float(cfg["line_drift_per_word"]),
+        "wordSpacingJitter": float(cfg["word_spacing_jitter"]),
+        "rotation": rotation,
+        "pressureMin": float(cfg["pressure_min"]),
+        "pressureMax": float(cfg["pressure_max"]),
+        "strokeGain": float(cfg["stroke_gain"]),
+        "edgeRoughness": float(cfg["edge_roughness"]),
+        "textureBlend": float(cfg["texture_blend"]),
+        "upperScale": 1.0,
+        "ascenderScale": 1.0,
+        "xHeightScale": 1.0,
+        "descenderScale": 1.0,
+        "descenderShift": 0.0,
+        "digitScale": 1.0,
+        "symbolScale": 1.0,
+        "commaScale": 1.0,
+        "commaShift": 0.0,
+        "dotScale": 1.0,
+    }
+
+
 def is_handwriting_dataset_dir(path):
     if not path.is_dir():
         return False
@@ -163,6 +201,7 @@ def ensure_datasets():
                 use_bounds=True,
                 center_symbols=True,
                 clean_symbols=True,
+                threshold_mode="auto",
             )
 
     return list_datasets()
@@ -242,6 +281,7 @@ def run_extraction(image_path, glyph_type):
             use_bounds=True,
             center_symbols=True,
             clean_symbols=True,
+            threshold_mode="auto",
         )
         return str(output_folder)
 
@@ -336,6 +376,14 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+
+        if parsed.path == "/api/defaults":
+            json_response(
+                self,
+                200,
+                {"options": build_frontend_default_options()},
+            )
+            return
 
         if parsed.path == "/api/datasets":
             handwriting_sets, coding_sets = ensure_datasets()

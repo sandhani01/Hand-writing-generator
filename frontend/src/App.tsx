@@ -45,6 +45,10 @@ type DatasetResponse = {
   coding?: string[];
 };
 
+type DefaultsResponse = {
+  options?: RenderOptions;
+};
+
 type ExtractResponse = {
   sessionId?: string;
   datasets?: DatasetResponse;
@@ -75,11 +79,11 @@ const DEFAULT_TEXT = `Every brave cat danced eagerly for gentle heroes.
 Middle letters stay compact, tall letters rise up, and descenders drop lower.
 0123456789 !@#%^&*()_-=+[]{};:'"<>/?\\|\`~`;
 
-const DEFAULT_OPTIONS: RenderOptions = {
+const FALLBACK_OPTIONS: RenderOptions = {
   lineHeight: 82,
-  charSpacing: 1,
+  charSpacing: -1,
   wordSpacing: 26,
-  jitter: 3,
+  jitter: 0,
   inkColor: "#0f1e50",
   overallScale: 1.42,
   marginLeft: 100,
@@ -319,7 +323,7 @@ const ADVANCED_GROUPS: ControlGroup[] = [
         max: 8,
         step: 0.1,
         description: "Maximum rotation in degrees in either direction.",
-        format: (value) => `${value.toFixed(1)}°`,
+        format: (value) => `${value.toFixed(1)} deg`,
       },
     ],
   },
@@ -411,7 +415,8 @@ export default function App() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [options, setOptions] = useState<RenderOptions>(DEFAULT_OPTIONS);
+  const [defaultOptions, setDefaultOptions] = useState<RenderOptions>(FALLBACK_OPTIONS);
+  const [options, setOptions] = useState<RenderOptions>(FALLBACK_OPTIONS);
 
   const canRender =
     uploadCounts.handwriting > 0 || availableCounts.handwriting > 0;
@@ -444,7 +449,24 @@ export default function App() {
     }
   };
 
+  const loadRendererDefaults = async () => {
+    try {
+      const response = await fetch(apiUrl("/api/defaults"));
+      const data: DefaultsResponse = await response.json();
+      if (!response.ok || !data.options) {
+        throw new Error("Could not load renderer defaults");
+      }
+
+      setDefaultOptions(data.options);
+      setOptions(data.options);
+    } catch {
+      setDefaultOptions(FALLBACK_OPTIONS);
+      setOptions(FALLBACK_OPTIONS);
+    }
+  };
+
   useEffect(() => {
+    loadRendererDefaults();
     loadDatasets();
   }, []);
 
@@ -538,7 +560,7 @@ export default function App() {
     setUploadCounts({ handwriting: 0, coding: 0 });
     setUploadError(null);
     setRenderError(null);
-    setOptions(DEFAULT_OPTIONS);
+    setOptions(defaultOptions);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -548,131 +570,145 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app__header">
-        <div className="app__brand">
-          <div className="app__dot" />
-          <div>
-            <p className="app__kicker">Handwritten Notes Generator</p>
-            <h1 className="app__title">Upload - Render - Download</h1>
-          </div>
+      <header className="hero">
+        <div className="hero__left">
+          <p className="hero__eyebrow">Handwritten Notes Generator</p>
+          <h1>Shape Your Writing Engine</h1>
+          <p className="hero__subtitle">
+            Upload style sheets, tune realism controls, and render assignment pages
+            with your own handwriting behavior.
+          </p>
         </div>
-        <button className="ghost" onClick={resetSession}>
-          Reset Session
-        </button>
+        <div className="hero__actions">
+          <button className="ghost" onClick={loadDatasets} disabled={isLoadingDatasets}>
+            {isLoadingDatasets ? "Refreshing..." : "Sync Library"}
+          </button>
+          <button className="ghost" onClick={resetSession}>
+            Reset Session
+          </button>
+        </div>
       </header>
 
-      <main className="app__main">
-        <section className="card">
-          <div className="card__header">
-            <div>
-              <h2>Upload Datasets</h2>
-              <p className="muted">
-                Session uploads: {uploadCounts.handwriting} alphabet set(s),{" "}
-                {uploadCounts.coding} coding set(s)
-              </p>
+      <section className="stats">
+        <div className="stat">
+          <span>Session alphabet</span>
+          <strong>{uploadCounts.handwriting}</strong>
+        </div>
+        <div className="stat">
+          <span>Session coding</span>
+          <strong>{uploadCounts.coding}</strong>
+        </div>
+        <div className="stat">
+          <span>Library alphabet</span>
+          <strong>{availableCounts.handwriting}</strong>
+        </div>
+        <div className="stat">
+          <span>Library coding</span>
+          <strong>{availableCounts.coding}</strong>
+        </div>
+      </section>
+
+      <main className="layout">
+        <section className="column">
+          <article className="card">
+            <div className="card__header">
+              <div>
+                <h2>1. Upload Datasets</h2>
+                <p className="muted">
+                  Add your handwriting and coding symbol sheets. Existing sets in the
+                  backend are also available.
+                </p>
+              </div>
             </div>
-            <button
-              className="ghost"
-              onClick={loadDatasets}
-              disabled={isLoadingDatasets}
-            >
-              {isLoadingDatasets ? "Refreshing..." : "Refresh Library"}
-            </button>
-          </div>
 
-          <p className="muted">
-            Available in backend: {availableCounts.handwriting} alphabet set(s),{" "}
-            {availableCounts.coding} coding set(s)
-          </p>
-
-          <div className="upload-grid">
-            <label className="upload">
-              <span>Alphabet Grid (8x8)</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => handleUpload(event, "alphabet")}
-                disabled={isUploading}
-              />
-            </label>
-            <label className="upload">
-              <span>Coding Symbols Grid (6x5)</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => handleUpload(event, "coding")}
-                disabled={isUploading}
-              />
-            </label>
-          </div>
-
-          {uploadError && <div className="alert">{uploadError}</div>}
-          {isUploading && <p className="muted">Processing upload...</p>}
-        </section>
-
-        <section className="card">
-          <div className="card__header card__header--start">
-            <div>
-              <h2>Compose</h2>
-              <p className="muted">
-                Empty lines are preserved now, so a blank line in the box becomes
-                a blank line on the page.
-              </p>
-            </div>
-            <button
-              className="primary"
-              onClick={handleRender}
-              disabled={!canRender || isRendering}
-            >
-              {isRendering ? "Rendering..." : "Render Page"}
-            </button>
-          </div>
-
-          <textarea
-            className="textarea"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-          />
-
-          <div className="controls controls--basic">
-            {BASIC_CONTROLS.map((control) => (
-              <label className="slider-card" key={control.key}>
-                <div className="slider-card__header">
-                  <span>{control.label}</span>
-                  <strong>{formatControlValue(control, options[control.key])}</strong>
-                </div>
+            <div className="upload-grid">
+              <label className="upload">
+                <span>Alphabet Grid (8x8)</span>
                 <input
-                  type="range"
-                  min={control.min}
-                  max={control.max}
-                  step={control.step}
-                  value={options[control.key]}
-                  onChange={(event) =>
-                    setNumericOption(control.key, Number(event.target.value))
-                  }
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleUpload(event, "alphabet")}
+                  disabled={isUploading}
                 />
-                <small>{control.description}</small>
               </label>
-            ))}
-          </div>
-
-          <div className="advanced-bar">
-            <div>
-              <h3>Advanced Filters</h3>
-              <p className="muted">
-                Expand to fine-tune letter families, page flow, and ink behavior.
-              </p>
+              <label className="upload">
+                <span>Coding Symbols Grid (6x5)</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleUpload(event, "coding")}
+                  disabled={isUploading}
+                />
+              </label>
             </div>
-            <button
-              className="ghost"
-              onClick={() => setShowAdvanced((value) => !value)}
-            >
-              {showAdvanced ? "Hide Advanced Filters" : "Show All Filters"}
-            </button>
-          </div>
 
-          {showAdvanced && (
-            <div className="advanced-panel">
+            {uploadError && <div className="alert">{uploadError}</div>}
+            {isUploading && <p className="muted">Processing upload...</p>}
+          </article>
+
+          <article className="card">
+            <div className="card__header card__header--start">
+              <div>
+                <h2>2. Compose And Tune</h2>
+                <p className="muted">
+                  Empty lines are preserved. Basic controls stay visible while advanced
+                  filters remain one click away.
+                </p>
+              </div>
+              <button
+                className="primary"
+                onClick={handleRender}
+                disabled={!canRender || isRendering}
+              >
+                {isRendering ? "Rendering..." : "Render Page"}
+              </button>
+            </div>
+
+            <textarea
+              className="textarea"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+            />
+
+            <div className="controls controls--basic">
+              {BASIC_CONTROLS.map((control) => (
+                <label className="slider-card" key={control.key}>
+                  <div className="slider-card__header">
+                    <span>{control.label}</span>
+                    <strong>{formatControlValue(control, options[control.key])}</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min={control.min}
+                    max={control.max}
+                    step={control.step}
+                    value={options[control.key]}
+                    onChange={(event) =>
+                      setNumericOption(control.key, Number(event.target.value))
+                    }
+                  />
+                  <small>{control.description}</small>
+                </label>
+              ))}
+            </div>
+
+            <div className="advanced-bar">
+              <div>
+                <h3>Advanced Filters</h3>
+                <p className="muted">
+                  Expand for detailed controls over letter classes, layout drift, and
+                  ink behavior.
+                </p>
+              </div>
+              <button
+                className="ghost"
+                onClick={() => setShowAdvanced((value) => !value)}
+              >
+                {showAdvanced ? "Hide Advanced Filters" : "Show All Filters"}
+              </button>
+            </div>
+
+            <div className={`advanced-panel ${showAdvanced ? "is-open" : ""}`}>
               <label className="color-control">
                 <span>Ink color</span>
                 <div className="color-control__row">
@@ -722,28 +758,35 @@ export default function App() {
                 </section>
               ))}
             </div>
-          )}
 
-          {renderError && <div className="alert">{renderError}</div>}
+            {renderError && <div className="alert">{renderError}</div>}
+          </article>
         </section>
 
-        <section className="card preview">
-          <div className="card__header">
-            <h2>Preview</h2>
-            {previewUrl && (
-              <a className="ghost" href={previewUrl} download="handwritten-page.png">
-                Download PNG
-              </a>
-            )}
-          </div>
-          <div className="preview__body">
-            {previewUrl ? (
-              <img src={previewUrl} alt="Rendered preview" />
-            ) : (
-              <p className="muted">Render to see output.</p>
-            )}
-          </div>
-        </section>
+        <aside className="preview-column">
+          <article className="card preview">
+            <div className="card__header">
+              <div>
+                <h2>3. Preview</h2>
+                <p className="muted">
+                  Rendered output appears here with the current control set.
+                </p>
+              </div>
+              {previewUrl && (
+                <a className="ghost" href={previewUrl} download="handwritten-page.png">
+                  Download PNG
+                </a>
+              )}
+            </div>
+            <div className="preview__body">
+              {previewUrl ? (
+                <img src={previewUrl} alt="Rendered preview" />
+              ) : (
+                <p className="muted">Render to see output.</p>
+              )}
+            </div>
+          </article>
+        </aside>
       </main>
     </div>
   );
