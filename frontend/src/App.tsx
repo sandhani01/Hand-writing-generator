@@ -1,396 +1,32 @@
-import { useEffect, useState } from "react";
-import "./index.css";
-
-type UploadType = "alphabet" | "coding";
-
-type RenderOptions = {
-  lineHeight: number;
-  charSpacing: number;
-  wordSpacing: number;
-  jitter: number;
-  inkColor: string;
-  overallScale: number;
-  marginLeft: number;
-  marginTop: number;
-  marginRight: number;
-  marginBottom: number;
-  baselineJitter: number;
-  lineDriftPerWord: number;
-  wordSpacingJitter: number;
-  rotation: number;
-  pressureMin: number;
-  pressureMax: number;
-  strokeGain: number;
-  edgeRoughness: number;
-  textureBlend: number;
-  upperScale: number;
-  ascenderScale: number;
-  xHeightScale: number;
-  descenderScale: number;
-  descenderShift: number;
-  digitScale: number;
-  symbolScale: number;
-  commaScale: number;
-  commaShift: number;
-  dotScale: number;
-};
-
-type UploadCounts = {
-  handwriting: number;
-  coding: number;
-};
-
-type DatasetResponse = {
-  handwriting?: string[];
-  coding?: string[];
-};
-
-type DefaultsResponse = {
-  options?: RenderOptions;
-};
-
-type ExtractResponse = {
-  sessionId?: string;
-  datasets?: DatasetResponse;
-  error?: string;
-  details?: string;
-};
-
-type NumericOptionKey = Exclude<keyof RenderOptions, "inkColor">;
-
-type SliderConfig = {
-  key: NumericOptionKey;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  description: string;
-  format?: (value: number) => string;
-};
-
-type ControlGroup = {
-  title: string;
-  description: string;
-  controls: SliderConfig[];
-};
-
-const DEFAULT_TEXT = `Every brave cat danced eagerly for gentle heroes.
-
-Middle letters stay compact, tall letters rise up, and descenders drop lower.
-0123456789 !@#%^&*()_-=+[]{};:'"<>/?\\|\`~`;
-
-const FALLBACK_OPTIONS: RenderOptions = {
-  lineHeight: 82,
-  charSpacing: -1,
-  wordSpacing: 26,
-  jitter: 0,
-  inkColor: "#0f1e50",
-  overallScale: 1.42,
-  marginLeft: 100,
-  marginTop: 180,
-  marginRight: 30,
-  marginBottom: 180,
-  baselineJitter: 0.25,
-  lineDriftPerWord: 0.18,
-  wordSpacingJitter: 3,
-  rotation: 2,
-  pressureMin: 0.9,
-  pressureMax: 0.98,
-  strokeGain: 1.28,
-  edgeRoughness: 0,
-  textureBlend: 0.08,
-  upperScale: 1,
-  ascenderScale: 1,
-  xHeightScale: 1,
-  descenderScale: 1,
-  descenderShift: 0,
-  digitScale: 1,
-  symbolScale: 1,
-  commaScale: 1,
-  commaShift: 0,
-  dotScale: 1,
-};
-
-const BASIC_CONTROLS: SliderConfig[] = [
-  {
-    key: "lineHeight",
-    label: "Line height",
-    min: 40,
-    max: 180,
-    step: 1,
-    description: "Vertical distance between rendered lines.",
-  },
-  {
-    key: "charSpacing",
-    label: "Letter spacing",
-    min: -12,
-    max: 30,
-    step: 1,
-    description: "Space between neighboring letters inside words.",
-  },
-  {
-    key: "wordSpacing",
-    label: "Word spacing",
-    min: 8,
-    max: 70,
-    step: 1,
-    description: "Gap inserted for spaces in the compose box.",
-  },
-  {
-    key: "jitter",
-    label: "Jitter",
-    min: 0,
-    max: 12,
-    step: 0.5,
-    description: "Overall natural wobble for spacing, drift, and rotation.",
-    format: (value) => value.toFixed(1),
-  },
-];
-
-const ADVANCED_GROUPS: ControlGroup[] = [
-  {
-    title: "Letter Families",
-    description:
-      "Tune each family separately: middle letters, ascenders, descenders, numbers, and punctuation.",
-    controls: [
-      {
-        key: "xHeightScale",
-        label: "Middle letters",
-        min: 0.6,
-        max: 1.6,
-        step: 0.01,
-        description: "a c e m n o r s u v w x z",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "ascenderScale",
-        label: "Tall letters",
-        min: 0.6,
-        max: 1.7,
-        step: 0.01,
-        description: "b d f h k l t",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "descenderScale",
-        label: "Descenders",
-        min: 0.6,
-        max: 1.8,
-        step: 0.01,
-        description: "g j p q y",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "descenderShift",
-        label: "Descender drop",
-        min: -8,
-        max: 28,
-        step: 1,
-        description: "Moves descenders farther below the baseline.",
-      },
-      {
-        key: "upperScale",
-        label: "Uppercase size",
-        min: 0.6,
-        max: 1.6,
-        step: 0.01,
-        description: "Scale for A-Z.",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "digitScale",
-        label: "Digit size",
-        min: 0.6,
-        max: 1.6,
-        step: 0.01,
-        description: "Scale for 0-9.",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "symbolScale",
-        label: "Symbol size",
-        min: 0.6,
-        max: 1.9,
-        step: 0.01,
-        description: "Scale for coding symbols and punctuation marks.",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "commaScale",
-        label: "Comma size",
-        min: 0.5,
-        max: 1.8,
-        step: 0.01,
-        description: "Useful when commas feel too small compared to letters.",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "commaShift",
-        label: "Comma drop",
-        min: -12,
-        max: 18,
-        step: 1,
-        description: "Moves commas lower or higher relative to the baseline.",
-      },
-      {
-        key: "dotScale",
-        label: "Dot size",
-        min: 0.5,
-        max: 1.8,
-        step: 0.01,
-        description: "Scale for periods and dot-like punctuation.",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-    ],
-  },
-  {
-    title: "Flow And Layout",
-    description:
-      "These controls affect how lines breathe and how the page is laid out.",
-    controls: [
-      {
-        key: "overallScale",
-        label: "Overall size",
-        min: 0.8,
-        max: 2.2,
-        step: 0.01,
-        description: "Scales the whole handwriting system up or down.",
-        format: (value) => `${value.toFixed(2)}x`,
-      },
-      {
-        key: "marginLeft",
-        label: "Left margin",
-        min: 20,
-        max: 220,
-        step: 1,
-        description: "Page start position from the left edge.",
-      },
-      {
-        key: "marginTop",
-        label: "Top margin",
-        min: 40,
-        max: 300,
-        step: 1,
-        description: "Baseline position of the first line.",
-      },
-      {
-        key: "marginRight",
-        label: "Right margin",
-        min: 10,
-        max: 180,
-        step: 1,
-        description: "Padding kept before the page edge.",
-      },
-      {
-        key: "marginBottom",
-        label: "Bottom margin",
-        min: 40,
-        max: 260,
-        step: 1,
-        description: "Padding kept before the bottom of the page.",
-      },
-      {
-        key: "baselineJitter",
-        label: "Baseline wobble",
-        min: 0,
-        max: 5,
-        step: 0.05,
-        description: "Tiny up and down movement of individual glyphs.",
-        format: (value) => value.toFixed(2),
-      },
-      {
-        key: "lineDriftPerWord",
-        label: "Line drift",
-        min: 0,
-        max: 3,
-        step: 0.05,
-        description: "Gentle rising or dipping motion across each line.",
-        format: (value) => value.toFixed(2),
-      },
-      {
-        key: "wordSpacingJitter",
-        label: "Word spacing variance",
-        min: 0,
-        max: 20,
-        step: 0.25,
-        description: "How much each word gap can vary from the slider above.",
-        format: (value) => value.toFixed(2),
-      },
-      {
-        key: "rotation",
-        label: "Rotation range",
-        min: 0,
-        max: 8,
-        step: 0.1,
-        description: "Maximum rotation in degrees in either direction.",
-        format: (value) => `${value.toFixed(1)} deg`,
-      },
-    ],
-  },
-  {
-    title: "Ink And Texture",
-    description:
-      "Use these when you want the letters to feel darker, rougher, or more scan-like.",
-    controls: [
-      {
-        key: "pressureMin",
-        label: "Pressure minimum",
-        min: 0.4,
-        max: 1.2,
-        step: 0.01,
-        description: "Lower bound for ink pressure.",
-        format: (value) => value.toFixed(2),
-      },
-      {
-        key: "pressureMax",
-        label: "Pressure maximum",
-        min: 0.5,
-        max: 1.5,
-        step: 0.01,
-        description: "Upper bound for ink pressure.",
-        format: (value) => value.toFixed(2),
-      },
-      {
-        key: "strokeGain",
-        label: "Stroke thickness",
-        min: 0.6,
-        max: 2.4,
-        step: 0.01,
-        description: "Makes the handwriting look lighter or thicker.",
-        format: (value) => value.toFixed(2),
-      },
-      {
-        key: "edgeRoughness",
-        label: "Edge roughness",
-        min: 0,
-        max: 0.3,
-        step: 0.01,
-        description: "Adds slight edge breakup so strokes look less perfect.",
-        format: (value) => value.toFixed(2),
-      },
-      {
-        key: "textureBlend",
-        label: "Paper blend",
-        min: 0,
-        max: 0.4,
-        step: 0.01,
-        description: "Blends ink more into the page texture.",
-        format: (value) => value.toFixed(2),
-      },
-    ],
-  },
-];
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
-
-function formatControlValue(config: SliderConfig, value: number) {
-  if (config.format) {
-    return config.format(value);
-  }
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
-}
+import { useCallback, useEffect, useState } from "react";
+import {
+  clearStoredAssignmentMode,
+  persistAssignmentMode,
+  readStoredAssignmentMode,
+} from "./assignmentModeStorage";
+import { AssignmentModePicker } from "./components/AssignmentModePicker";
+import { SliderControl } from "./components/SliderControl";
+import { ThemeToggle } from "./components/ThemeToggle";
+import { WorkflowSection } from "./components/WorkflowSection";
+import { useTheme } from "./useTheme";
+import {
+  ADVANCED_GROUPS,
+  BASIC_CONTROLS,
+  DEFAULT_TEXT_CODING,
+  DEFAULT_TEXT_SIMPLE,
+  FALLBACK_OPTIONS,
+  getErrorMessage,
+} from "./renderControls";
+import type {
+  AssignmentMode,
+  DatasetResponse,
+  DefaultsResponse,
+  ExtractResponse,
+  NumericOptionKey,
+  RenderOptions,
+  UploadCounts,
+  UploadType,
+} from "./types";
 
 export default function App() {
   const apiBase =
@@ -407,7 +43,13 @@ export default function App() {
     handwriting: 0,
     coding: 0,
   });
-  const [text, setText] = useState(DEFAULT_TEXT);
+  const [text, setText] = useState(() => {
+    const m = readStoredAssignmentMode();
+    return m === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE;
+  });
+  const [assignmentMode, setAssignmentMode] = useState<AssignmentMode | null>(
+    () => readStoredAssignmentMode()
+  );
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
@@ -415,8 +57,11 @@ export default function App() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [defaultOptions, setDefaultOptions] = useState<RenderOptions>(FALLBACK_OPTIONS);
+  const [defaultOptions, setDefaultOptions] =
+    useState<RenderOptions>(FALLBACK_OPTIONS);
   const [options, setOptions] = useState<RenderOptions>(FALLBACK_OPTIONS);
+  const [copyHint, setCopyHint] = useState<string | null>(null);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const canRender =
     uploadCounts.handwriting > 0 || availableCounts.handwriting > 0;
@@ -425,10 +70,10 @@ export default function App() {
     setOptions((current) => ({ ...current, [key]: value }));
   };
 
-  const loadDatasets = async () => {
+  const loadDatasets = useCallback(async () => {
     setIsLoadingDatasets(true);
     try {
-      const response = await fetch(apiUrl("/api/datasets"));
+      const response = await fetch(`${apiBase}/api/datasets`);
       const data: DatasetResponse = await response.json();
       if (!response.ok) {
         throw new Error("Could not load datasets");
@@ -447,11 +92,11 @@ export default function App() {
     } finally {
       setIsLoadingDatasets(false);
     }
-  };
+  }, [apiBase]);
 
-  const loadRendererDefaults = async () => {
+  const loadRendererDefaults = useCallback(async () => {
     try {
-      const response = await fetch(apiUrl("/api/defaults"));
+      const response = await fetch(`${apiBase}/api/defaults`);
       const data: DefaultsResponse = await response.json();
       if (!response.ok || !data.options) {
         throw new Error("Could not load renderer defaults");
@@ -463,12 +108,22 @@ export default function App() {
       setDefaultOptions(FALLBACK_OPTIONS);
       setOptions(FALLBACK_OPTIONS);
     }
-  };
+  }, [apiBase]);
 
   useEffect(() => {
     loadRendererDefaults();
     loadDatasets();
-  }, []);
+  }, [loadDatasets, loadRendererDefaults]);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute(
+        "content",
+        theme === "dark" ? "#0b0d11" : "#eceae4"
+      );
+    }
+  }, [theme]);
 
   const handleUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -568,223 +223,352 @@ export default function App() {
     await loadDatasets();
   };
 
+  const selectAssignmentMode = (mode: AssignmentMode) => {
+    setAssignmentMode(mode);
+    setText(mode === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE);
+    persistAssignmentMode(mode);
+  };
+
+  const openAssignmentPicker = () => {
+    setAssignmentMode(null);
+    clearStoredAssignmentMode();
+  };
+
+  const copySessionId = async () => {
+    if (!sessionId) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(sessionId);
+      setCopyHint("Copied");
+      window.setTimeout(() => setCopyHint(null), 2000);
+    } catch {
+      setCopyHint("Copy failed");
+      window.setTimeout(() => setCopyHint(null), 2000);
+    }
+  };
+
+  const isCodingMode = assignmentMode === "coding";
+
+  if (assignmentMode === null) {
+    return (
+      <div className="app app--gate">
+        <a className="skip-link" href="#assignment-picker">
+          Skip to choices
+        </a>
+        <div className="gate-topbar">
+          <span className="gate-brand">Handwritten Notes</span>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
+        <AssignmentModePicker onSelect={selectAssignmentMode} />
+      </div>
+    );
+  }
+
   return (
     <div className="app">
-      <header className="hero">
-        <div className="hero__left">
-          <p className="hero__eyebrow">Handwritten Notes Generator</p>
-          <h1>Shape Your Writing Engine</h1>
-          <p className="hero__subtitle">
-            Upload style sheets, tune realism controls, and render assignment pages
-            with your own handwriting behavior.
+      <a className="skip-link" href="#main-workflow">
+        Skip to workflow
+      </a>
+
+      <header className="app-header">
+        <div className="app-header__brand">
+          <p className="app-header__eyebrow">Handwritten Notes</p>
+          <div className="app-header__title-row">
+            <h1 className="app-header__title">Render pages in your handwriting</h1>
+            <span
+              className={`mode-badge ${isCodingMode ? "mode-badge--coding" : ""}`}
+            >
+              {isCodingMode ? "Coding" : "Simple"}
+            </span>
+          </div>
+          <p className="app-header__lede">
+            {isCodingMode
+              ? "Alphabet and coding grids, compose, tune, then export a PNG."
+              : "Alphabet grids only in this mode. Compose, tune, then export a PNG."}
           </p>
         </div>
-        <div className="hero__actions">
-          <button className="ghost" onClick={loadDatasets} disabled={isLoadingDatasets}>
-            {isLoadingDatasets ? "Refreshing..." : "Sync Library"}
+        <div className="app-header__toolbar">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={openAssignmentPicker}
+          >
+            Change type
           </button>
-          <button className="ghost" onClick={resetSession}>
-            Reset Session
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={loadDatasets}
+            disabled={isLoadingDatasets}
+          >
+            {isLoadingDatasets ? "Refreshing…" : "Refresh library"}
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={resetSession}>
+            Reset session
           </button>
         </div>
       </header>
 
-      <section className="stats">
-        <div className="stat">
-          <span>Session alphabet</span>
-          <strong>{uploadCounts.handwriting}</strong>
-        </div>
-        <div className="stat">
-          <span>Session coding</span>
-          <strong>{uploadCounts.coding}</strong>
-        </div>
-        <div className="stat">
-          <span>Library alphabet</span>
-          <strong>{availableCounts.handwriting}</strong>
-        </div>
-        <div className="stat">
-          <span>Library coding</span>
-          <strong>{availableCounts.coding}</strong>
-        </div>
-      </section>
-
-      <main className="layout">
-        <section className="column">
-          <article className="card">
-            <div className="card__header">
-              <div>
-                <h2>1. Upload Datasets</h2>
-                <p className="muted">
-                  Add your handwriting and coding symbol sheets. Existing sets in the
-                  backend are also available.
-                </p>
-              </div>
-            </div>
-
-            <div className="upload-grid">
-              <label className="upload">
-                <span>Alphabet Grid (8x8)</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => handleUpload(event, "alphabet")}
-                  disabled={isUploading}
-                />
-              </label>
-              <label className="upload">
-                <span>Coding Symbols Grid (6x5)</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => handleUpload(event, "coding")}
-                  disabled={isUploading}
-                />
-              </label>
-            </div>
-
-            {uploadError && <div className="alert">{uploadError}</div>}
-            {isUploading && <p className="muted">Processing upload...</p>}
-          </article>
-
-          <article className="card">
-            <div className="card__header card__header--start">
-              <div>
-                <h2>2. Compose And Tune</h2>
-                <p className="muted">
-                  Empty lines are preserved. Basic controls stay visible while advanced
-                  filters remain one click away.
-                </p>
-              </div>
-              <button
-                className="primary"
-                onClick={handleRender}
-                disabled={!canRender || isRendering}
-              >
-                {isRendering ? "Rendering..." : "Render Page"}
-              </button>
-            </div>
-
-            <textarea
-              className="textarea"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-            />
-
-            <div className="controls controls--basic">
-              {BASIC_CONTROLS.map((control) => (
-                <label className="slider-card" key={control.key}>
-                  <div className="slider-card__header">
-                    <span>{control.label}</span>
-                    <strong>{formatControlValue(control, options[control.key])}</strong>
+      <main id="main-workflow" className="layout">
+        <div className="layout__stack">
+          <article className="surface surface--raised">
+            <WorkflowSection
+              step="01"
+              title="Dataset library"
+              subtitle={
+                isCodingMode
+                  ? "Upload alphabet and coding grids, or use server library sets. Session stacks with the library at render time."
+                  : "Alphabet handwriting only in this mode. Upload a grid or use the library. Session stacks with the library at render time."
+              }
+              headerExtra={
+                sessionId ? (
+                  <div className="session-chip">
+                    <span className="session-chip__label">Session</span>
+                    <code className="session-chip__id" title={sessionId}>
+                      {sessionId.length > 14
+                        ? `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}`
+                        : sessionId}
+                    </code>
+                    <button
+                      type="button"
+                      className="btn btn--mini"
+                      onClick={copySessionId}
+                    >
+                      Copy
+                    </button>
+                    {copyHint ? (
+                      <span className="session-chip__hint">{copyHint}</span>
+                    ) : null}
                   </div>
-                  <input
-                    type="range"
-                    min={control.min}
-                    max={control.max}
-                    step={control.step}
-                    value={options[control.key]}
-                    onChange={(event) =>
-                      setNumericOption(control.key, Number(event.target.value))
-                    }
-                  />
-                  <small>{control.description}</small>
-                </label>
-              ))}
-            </div>
-
-            <div className="advanced-bar">
-              <div>
-                <h3>Advanced Filters</h3>
-                <p className="muted">
-                  Expand for detailed controls over letter classes, layout drift, and
-                  ink behavior.
-                </p>
-              </div>
-              <button
-                className="ghost"
-                onClick={() => setShowAdvanced((value) => !value)}
+                ) : null
+              }
+            >
+              <div
+                className={`library-metrics ${isCodingMode ? "library-metrics--coding" : "library-metrics--simple"}`}
+                role="group"
+                aria-label="Dataset counts"
               >
-                {showAdvanced ? "Hide Advanced Filters" : "Show All Filters"}
-              </button>
-            </div>
-
-            <div className={`advanced-panel ${showAdvanced ? "is-open" : ""}`}>
-              <label className="color-control">
-                <span>Ink color</span>
-                <div className="color-control__row">
-                  <input
-                    type="color"
-                    value={options.inkColor}
-                    onChange={(event) =>
-                      setOptions((current) => ({
-                        ...current,
-                        inkColor: event.target.value,
-                      }))
-                    }
-                  />
-                  <code>{options.inkColor}</code>
+                <div className="metric-pill">
+                  <span className="metric-pill__label">Session · alphabet</span>
+                  <strong className="metric-pill__value">
+                    {uploadCounts.handwriting}
+                  </strong>
                 </div>
-              </label>
-
-              {ADVANCED_GROUPS.map((group) => (
-                <section className="control-group" key={group.title}>
-                  <div className="control-group__header">
-                    <h3>{group.title}</h3>
-                    <p className="muted">{group.description}</p>
+                {isCodingMode ? (
+                  <div className="metric-pill">
+                    <span className="metric-pill__label">Session · coding</span>
+                    <strong className="metric-pill__value">
+                      {uploadCounts.coding}
+                    </strong>
                   </div>
-                  <div className="controls controls--advanced">
-                    {group.controls.map((control) => (
-                      <label className="slider-card" key={control.key}>
-                        <div className="slider-card__header">
-                          <span>{control.label}</span>
-                          <strong>
-                            {formatControlValue(control, options[control.key])}
-                          </strong>
-                        </div>
-                        <input
-                          type="range"
-                          min={control.min}
-                          max={control.max}
-                          step={control.step}
-                          value={options[control.key]}
-                          onChange={(event) =>
-                            setNumericOption(control.key, Number(event.target.value))
-                          }
-                        />
-                        <small>{control.description}</small>
-                      </label>
-                    ))}
+                ) : null}
+                <div className="metric-pill metric-pill--accent">
+                  <span className="metric-pill__label">Library · alphabet</span>
+                  <strong className="metric-pill__value">
+                    {availableCounts.handwriting}
+                  </strong>
+                </div>
+                {isCodingMode ? (
+                  <div className="metric-pill metric-pill--accent">
+                    <span className="metric-pill__label">Library · coding</span>
+                    <strong className="metric-pill__value">
+                      {availableCounts.coding}
+                    </strong>
                   </div>
-                </section>
-              ))}
-            </div>
-
-            {renderError && <div className="alert">{renderError}</div>}
-          </article>
-        </section>
-
-        <aside className="preview-column">
-          <article className="card preview">
-            <div className="card__header">
-              <div>
-                <h2>3. Preview</h2>
-                <p className="muted">
-                  Rendered output appears here with the current control set.
-                </p>
+                ) : null}
               </div>
-              {previewUrl && (
-                <a className="ghost" href={previewUrl} download="handwritten-page.png">
-                  Download PNG
-                </a>
-              )}
-            </div>
-            <div className="preview__body">
+
+              <div
+                className={`upload-grid ${isCodingMode ? "" : "upload-grid--single"}`}
+              >
+                <label className="upload-tile">
+                  <span className="upload-tile__title">Alphabet grid (8×8)</span>
+                  <span className="upload-tile__hint">
+                    Handwriting cells mapped to letters and digits.
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => handleUpload(event, "alphabet")}
+                    disabled={isUploading}
+                  />
+                </label>
+                {isCodingMode ? (
+                  <label className="upload-tile">
+                    <span className="upload-tile__title">Coding grid (6×5)</span>
+                    <span className="upload-tile__hint">
+                      Symbols for brackets, operators, and punctuation.
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => handleUpload(event, "coding")}
+                      disabled={isUploading}
+                    />
+                  </label>
+                ) : null}
+              </div>
+
+              {uploadError ? <div className="alert">{uploadError}</div> : null}
+              {isUploading ? (
+                <p className="status-line">Processing upload…</p>
+              ) : null}
+            </WorkflowSection>
+          </article>
+
+          <article className="surface surface--raised">
+            <WorkflowSection
+              step="02"
+              title="Compose"
+              subtitle={
+                isCodingMode
+                  ? "Blank lines stay blank. Use symbols that match your coding grid for best results."
+                  : "Blank lines in the box stay blank in the render. Edit freely."
+              }
+            >
+              <textarea
+                className="compose-input"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                spellCheck={false}
+                aria-label="Text to render"
+              />
+            </WorkflowSection>
+          </article>
+
+          <article className="surface surface--raised">
+            <WorkflowSection
+              step="03"
+              title="Tuning"
+              subtitle="Core spacing controls are always visible. Open advanced for ink, margins, and glyph families."
+              headerExtra={
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  onClick={handleRender}
+                  disabled={!canRender || isRendering}
+                >
+                  {isRendering ? "Rendering…" : "Render page"}
+                </button>
+              }
+            >
+              <div className="controls controls--basic">
+                {BASIC_CONTROLS.map((control) => (
+                  <SliderControl
+                    key={control.key}
+                    config={control}
+                    options={options}
+                    onChange={setNumericOption}
+                  />
+                ))}
+              </div>
+
+              <div className="advanced-bar">
+                <div>
+                  <h3 className="advanced-bar__title">Advanced</h3>
+                  <p className="advanced-bar__text">
+                    Letter classes, page margins, drift, and ink texture.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--collapse"
+                  onClick={() => setShowAdvanced((value) => !value)}
+                  aria-expanded={showAdvanced}
+                >
+                  <span className="btn__chevron" data-open={showAdvanced} aria-hidden />
+                  {showAdvanced ? "Hide advanced" : "Show advanced"}
+                </button>
+              </div>
+
+              <div className={`advanced-panel ${showAdvanced ? "is-open" : ""}`}>
+                <label className="color-control">
+                  <span className="color-control__label">Ink color</span>
+                  <div className="color-control__row">
+                    <input
+                      type="color"
+                      value={options.inkColor}
+                      onChange={(event) =>
+                        setOptions((current) => ({
+                          ...current,
+                          inkColor: event.target.value,
+                        }))
+                      }
+                    />
+                    <code>{options.inkColor}</code>
+                  </div>
+                </label>
+
+                {ADVANCED_GROUPS.map((group) => (
+                  <section className="control-group" key={group.title}>
+                    <div className="control-group__header">
+                      <h3 className="control-group__title">{group.title}</h3>
+                      <p className="control-group__desc">{group.description}</p>
+                    </div>
+                    <div className="controls controls--advanced">
+                      {group.controls.map((control) => (
+                        <SliderControl
+                          key={control.key}
+                          config={control}
+                          options={options}
+                          onChange={setNumericOption}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+
+              {renderError ? <div className="alert">{renderError}</div> : null}
+            </WorkflowSection>
+          </article>
+        </div>
+
+        <aside className="layout__preview" aria-label="Preview and export">
+          <article className="surface surface--preview">
+            <WorkflowSection
+              step="04"
+              title="Preview"
+              subtitle="Latest render. Regenerate after you change text or controls."
+              className="workflow-section--tight"
+            >
+              <div className="preview-frame">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Rendered handwritten page" />
+                ) : (
+                  <div className="preview-empty">
+                    <p className="preview-empty__title">No preview yet</p>
+                    <p className="preview-empty__text">
+                      Add text, tune options if you like, then use{" "}
+                      <strong>Render page</strong> in the tuning step.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {previewUrl ? (
-                <img src={previewUrl} alt="Rendered preview" />
-              ) : (
-                <p className="muted">Render to see output.</p>
-              )}
-            </div>
+                <div className="export-row">
+                  <span className="export-row__step" aria-hidden>
+                    05
+                  </span>
+                  <div className="export-row__content">
+                    <p className="export-row__title">Export</p>
+                    <p className="export-row__text">
+                      Saves the current PNG to your device (same image as above).
+                    </p>
+                    <a
+                      className="btn btn--primary btn--block"
+                      href={previewUrl}
+                      download="handwritten-page.png"
+                    >
+                      Download PNG
+                    </a>
+                  </div>
+                </div>
+              ) : null}
+            </WorkflowSection>
           </article>
         </aside>
       </main>

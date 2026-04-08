@@ -1,10 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <meta name="theme-color" content="#0b0d11" />
+    <title>Handwritten Notes</title>
+    <script>
+      (function () {
+        try {
+          var k = "handwriting-notes-theme";
+          var t = localStorage.getItem(k);
+          var mode = t === "light" ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", mode);
+          document.documentElement.style.colorScheme =
+            mode === "light" ? "light" : "dark";
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+          document.documentElement.style.colorScheme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
