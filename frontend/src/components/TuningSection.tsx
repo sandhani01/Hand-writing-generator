@@ -2,15 +2,36 @@ import { useId } from "react";
 import { SliderControl } from "./SliderControl";
 import { WorkflowSection } from "./WorkflowSection";
 import { ErrorBanner } from "./ErrorBanner";
+import { CharacterOverridePanel } from "./CharacterOverridePanel";
 import { ADVANCED_GROUPS, BASIC_CONTROLS } from "../renderControls";
-import type { NumericOptionKey, RenderOptions } from "../types";
+import type {
+  CharacterOverrideKey,
+  NumericOptionKey,
+  RenderOptions,
+} from "../types";
 
 type Props = {
+  text: string;
   options: RenderOptions;
+  defaultOptions: RenderOptions;
+  supportsCharacterOverrides: boolean;
   showAdvanced: boolean;
   onToggleAdvanced: () => void;
   onNumericChange: (key: NumericOptionKey, value: number) => void;
+  onNumericReset: (key: NumericOptionKey) => void;
+  onCharacterOverrideChange: (
+    char: string,
+    key: CharacterOverrideKey,
+    value: number
+  ) => void;
+  onCharacterOverrideReset: (char: string) => void;
+  onCharacterOverrideFieldReset: (
+    char: string,
+    key: CharacterOverrideKey
+  ) => void;
   onInkColorChange: (color: string) => void;
+  onInkColorReset: () => void;
+  onResetAllFilters: () => void;
   canRender: boolean;
   isRendering: boolean;
   onRender: () => void;
@@ -18,11 +39,20 @@ type Props = {
 };
 
 export function TuningSection({
+  text,
   options,
+  defaultOptions,
+  supportsCharacterOverrides,
   showAdvanced,
   onToggleAdvanced,
   onNumericChange,
+  onNumericReset,
+  onCharacterOverrideChange,
+  onCharacterOverrideReset,
+  onCharacterOverrideFieldReset,
   onInkColorChange,
+  onInkColorReset,
+  onResetAllFilters,
   canRender,
   isRendering,
   onRender,
@@ -38,15 +68,24 @@ export function TuningSection({
         title="Tuning"
         subtitle="Core spacing controls stay visible. Advanced groups ink, margins, and glyph families."
         headerExtra={
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={onRender}
-            disabled={!canRender || isRendering}
-            aria-busy={isRendering}
-          >
-            {isRendering ? "Rendering…" : "Render page"}
-          </button>
+          <div className="workflow-actions">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={onResetAllFilters}
+            >
+              Reset filters
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={onRender}
+              disabled={!canRender || isRendering}
+              aria-busy={isRendering}
+            >
+              {isRendering ? "Rendering..." : "Render page"}
+            </button>
+          </div>
         }
       >
         <div className="controls controls--basic">
@@ -55,7 +94,9 @@ export function TuningSection({
               key={control.key}
               config={control}
               options={options}
+              defaultValue={defaultOptions[control.key]}
               onChange={onNumericChange}
+              onReset={onNumericReset}
             />
           ))}
         </div>
@@ -94,7 +135,17 @@ export function TuningSection({
           inert={showAdvanced ? undefined : true}
         >
           <label className="color-control">
-            <span className="color-control__label">Ink color</span>
+            <div className="color-control__header">
+              <span className="color-control__label">Ink color</span>
+              <button
+                type="button"
+                className="btn btn--ghost btn--mini"
+                disabled={options.inkColor === defaultOptions.inkColor}
+                onClick={onInkColorReset}
+              >
+                Reset
+              </button>
+            </div>
             <div className="color-control__row">
               <input
                 type="color"
@@ -105,6 +156,15 @@ export function TuningSection({
               <code>{options.inkColor}</code>
             </div>
           </label>
+
+          <CharacterOverridePanel
+            text={text}
+            charOverrides={options.charOverrides}
+            isSupported={supportsCharacterOverrides}
+            onChange={onCharacterOverrideChange}
+            onReset={onCharacterOverrideReset}
+            onResetField={onCharacterOverrideFieldReset}
+          />
 
           {ADVANCED_GROUPS.map((group) => (
             <section className="control-group" key={group.title}>
@@ -118,7 +178,9 @@ export function TuningSection({
                     key={control.key}
                     config={control}
                     options={options}
+                    defaultValue={defaultOptions[control.key]}
                     onChange={onNumericChange}
+                    onReset={onNumericReset}
                   />
                 ))}
               </div>

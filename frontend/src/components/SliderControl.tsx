@@ -4,14 +4,23 @@ import { formatControlValue } from "../renderControls";
 type Props = {
   config: SliderConfig;
   options: RenderOptions;
+  defaultValue: number;
   onChange: (key: NumericOptionKey, value: number) => void;
+  onReset: (key: NumericOptionKey) => void;
 };
 
-export function SliderControl({ config, options, onChange }: Props) {
+export function SliderControl({
+  config,
+  options,
+  defaultValue,
+  onChange,
+  onReset,
+}: Props) {
   const value = options[config.key];
   const valueText = formatControlValue(config, value);
   const rangeId = `control-range-${config.key}`;
   const hintId = `${rangeId}-hint`;
+  const isDefault = Math.abs(value - defaultValue) <= config.step / 2;
 
   return (
     <div className="slider-card">
@@ -19,9 +28,19 @@ export function SliderControl({ config, options, onChange }: Props) {
         <label className="slider-card__label" htmlFor={rangeId}>
           {config.label}
         </label>
-        <strong className="slider-card__value" aria-hidden>
-          {valueText}
-        </strong>
+        <div className="slider-card__actions">
+          <strong className="slider-card__value" aria-hidden>
+            {valueText}
+          </strong>
+          <button
+            type="button"
+            className="btn btn--ghost btn--mini"
+            disabled={isDefault}
+            onClick={() => onReset(config.key)}
+          >
+            Reset
+          </button>
+        </div>
       </div>
       <input
         id={rangeId}

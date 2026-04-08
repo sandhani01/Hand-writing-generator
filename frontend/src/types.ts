@@ -33,6 +33,16 @@ export type RenderOptions = {
   commaScale: number;
   commaShift: number;
   dotScale: number;
+  charOverrides: Record<string, CharacterOverride>;
+};
+
+export type CharacterOverride = {
+  scaleMultiplier: number;
+  widthMultiplier: number;
+  baselineShift: number;
+  strokeGainMultiplier: number;
+  spacingBeforeDelta: number;
+  spacingDelta: number;
 };
 
 export type UploadCounts = {
@@ -47,6 +57,9 @@ export type DatasetResponse = {
 
 export type DefaultsResponse = {
   options?: RenderOptions;
+  features?: {
+    charOverrides?: boolean;
+  };
 };
 
 export type ExtractResponse = {
@@ -56,7 +69,12 @@ export type ExtractResponse = {
   details?: string;
 };
 
-export type NumericOptionKey = Exclude<keyof RenderOptions, "inkColor">;
+export type NumericOptionKey = Exclude<
+  keyof RenderOptions,
+  "inkColor" | "charOverrides"
+>;
+
+export type CharacterOverrideKey = keyof CharacterOverride;
 
 export type SliderConfig = {
   key: NumericOptionKey;
@@ -72,4 +90,14 @@ export type ControlGroup = {
   title: string;
   description: string;
   controls: SliderConfig[];
+};
+
+export type CharacterSliderConfig = {
+  key: CharacterOverrideKey;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  description: string;
+  format?: (value: number) => string;
 };

@@ -117,6 +117,13 @@ def build_frontend_default_options():
         "commaScale": 1.0,
         "commaShift": 0.0,
         "dotScale": 1.0,
+        "charOverrides": {},
+    }
+
+
+def build_frontend_features():
+    return {
+        "charOverrides": True,
     }
 
 
@@ -363,6 +370,36 @@ def build_render_config(options):
         },
     }
 
+    cfg["char_overrides"] = {}
+    raw_char_overrides = options.get("charOverrides")
+    if isinstance(raw_char_overrides, dict):
+        for raw_char, override in raw_char_overrides.items():
+            if not isinstance(raw_char, str) or len(raw_char) != 1:
+                continue
+            if not isinstance(override, dict):
+                continue
+
+            cfg["char_overrides"][raw_char] = {
+                "scale_multiplier": to_float(
+                    override.get("scaleMultiplier"), 1.0
+                ),
+                "width_multiplier": to_float(
+                    override.get("widthMultiplier"), 1.0
+                ),
+                "baseline_shift": to_float(
+                    override.get("baselineShift"), 0.0
+                ),
+                "stroke_gain_multiplier": to_float(
+                    override.get("strokeGainMultiplier"), 1.0
+                ),
+                "char_spacing_before_delta": to_float(
+                    override.get("spacingBeforeDelta"), 0.0
+                ),
+                "char_spacing_delta": to_float(
+                    override.get("spacingDelta"), 0.0
+                ),
+            }
+
     return cfg
 
 
@@ -381,7 +418,10 @@ class ApiHandler(BaseHTTPRequestHandler):
             json_response(
                 self,
                 200,
-                {"options": build_frontend_default_options()},
+                {
+                    "options": build_frontend_default_options(),
+                    "features": build_frontend_features(),
+                },
             )
             return
 

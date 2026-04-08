@@ -14,11 +14,14 @@ import { useTheme } from "./useTheme";
 import {
   DEFAULT_TEXT_CODING,
   DEFAULT_TEXT_SIMPLE,
+  EMPTY_CHARACTER_OVERRIDE,
   FALLBACK_OPTIONS,
   getErrorMessage,
+  normalizeRenderOptions,
 } from "./renderControls";
 import type {
   AssignmentMode,
+  CharacterOverrideKey,
   DatasetResponse,
   DefaultsResponse,
   ExtractResponse,
@@ -60,6 +63,8 @@ export default function App() {
   const [defaultOptions, setDefaultOptions] =
     useState<RenderOptions>(FALLBACK_OPTIONS);
   const [options, setOptions] = useState<RenderOptions>(FALLBACK_OPTIONS);
+  const [supportsCharacterOverrides, setSupportsCharacterOverrides] =
+    useState(false);
   const [copyHint, setCopyHint] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -68,6 +73,13 @@ export default function App() {
 
   const setNumericOption = (key: NumericOptionKey, value: number) => {
     setOptions((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetNumericOption = (key: NumericOptionKey) => {
+    setOptions((current) => ({
+      ...current,
+      [key]: defaultOptions[key],
+    }));
   };
 
   const loadDatasets = useCallback(async () => {
@@ -102,11 +114,14 @@ export default function App() {
         throw new Error("Could not load renderer defaults");
       }
 
-      setDefaultOptions(data.options);
-      setOptions(data.options);
+      const normalized = normalizeRenderOptions(data.options);
+      setDefaultOptions(normalized);
+      setOptions(normalized);
+      setSupportsCharacterOverrides(Boolean(data.features?.charOverrides));
     } catch {
       setDefaultOptions(FALLBACK_OPTIONS);
       setOptions(FALLBACK_OPTIONS);
+      setSupportsCharacterOverrides(false);
     }
   }, [apiBase]);
 
@@ -210,6 +225,77 @@ export default function App() {
     }
   };
 
+  const setCharacterOverride = (
+    char: string,
+    key: CharacterOverrideKey,
+    value: number
+  ) => {
+    setOptions((current) => ({
+      ...current,
+      charOverrides: {
+        ...current.charOverrides,
+        [char]: {
+          ...EMPTY_CHARACTER_OVERRIDE,
+          ...(current.charOverrides[char] ?? {}),
+          [key]: value,
+        },
+      },
+    }));
+  };
+
+  const resetCharacterOverrideField = (
+    char: string,
+    key: CharacterOverrideKey
+  ) => {
+    setOptions((current) => {
+      const existing = current.charOverrides[char];
+      if (!existing) {
+        return current;
+      }
+
+      const nextCharOverride = {
+        ...EMPTY_CHARACTER_OVERRIDE,
+        ...existing,
+        [key]: EMPTY_CHARACTER_OVERRIDE[key],
+      };
+
+      const isDefault = (
+        Object.keys(EMPTY_CHARACTER_OVERRIDE) as CharacterOverrideKey[]
+      ).every(
+        (overrideKey) =>
+          nextCharOverride[overrideKey] === EMPTY_CHARACTER_OVERRIDE[overrideKey]
+      );
+
+      const nextOverrides = { ...current.charOverrides };
+      if (isDefault) {
+        delete nextOverrides[char];
+      } else {
+        nextOverrides[char] = nextCharOverride;
+      }
+
+      return {
+        ...current,
+        charOverrides: nextOverrides,
+      };
+    });
+  };
+
+  const resetCharacterOverride = (char: string) => {
+    setOptions((current) => {
+      if (!current.charOverrides[char]) {
+        return current;
+      }
+
+      const nextOverrides = { ...current.charOverrides };
+      delete nextOverrides[char];
+
+      return {
+        ...current,
+        charOverrides: nextOverrides,
+      };
+    });
+  };
+
   const resetSession = async () => {
     setSessionId(null);
     setUploadCounts({ handwriting: 0, coding: 0 });
@@ -221,6 +307,10 @@ export default function App() {
       setPreviewUrl(null);
     }
     await loadDatasets();
+  };
+
+  const resetAllFilters = () => {
+    setOptions(normalizeRenderOptions(defaultOptions));
   };
 
   const selectAssignmentMode = (mode: AssignmentMode) => {
@@ -301,13 +391,24 @@ export default function App() {
           />
 
           <TuningSection
+            text={text}
             options={options}
+            defaultOptions={defaultOptions}
+            supportsCharacterOverrides={supportsCharacterOverrides}
             showAdvanced={showAdvanced}
             onToggleAdvanced={() => setShowAdvanced((v) => !v)}
             onNumericChange={setNumericOption}
+            onNumericReset={resetNumericOption}
+            onCharacterOverrideChange={setCharacterOverride}
+            onCharacterOverrideReset={resetCharacterOverride}
+            onCharacterOverrideFieldReset={resetCharacterOverrideField}
             onInkColorChange={(color) =>
               setOptions((c) => ({ ...c, inkColor: color }))
             }
+            onInkColorReset={() =>
+              setOptions((c) => ({ ...c, inkColor: defaultOptions.inkColor }))
+            }
+            onResetAllFilters={resetAllFilters}
             canRender={canRender}
             isRendering={isRendering}
             onRender={handleRender}

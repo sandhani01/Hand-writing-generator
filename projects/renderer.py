@@ -5,6 +5,10 @@ import re
 import numpy as np
 from pathlib import Path
 from PIL import Image, ImageFilter, ImageEnhance
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 
 PROJECT_DIR = Path(__file__).resolve().parent
 
@@ -90,9 +94,10 @@ SYMBOL_FOLDER_MAP = {
 
 DEFAULT_CHAR_METRICS = {
     "upper": {
-        "scale_range": (0.48, 0.54),
-        "width_factor": 1.00,
+        "scale_range": (0.45, 0.50),
+        "width_factor": 0.95,
         "baseline_shift": 0,
+        "stroke_gain_multiplier": 0.72,
     },
     "lower_asc": {
         "scale_range": (0.41, 0.45),
@@ -151,6 +156,136 @@ DEFAULT_CHAR_METRICS = {
     },
 }
 
+MULTIPART_GLYPH_FOLDERS = {
+    "i_lower",
+    "j_lower",
+    "exclam",
+    "question",
+    "semicolon",
+    "colon",
+    "quote",
+    "percent",
+    "equals",
+    "hash",
+    "asterisk",
+}
+
+
+def clean_loaded_glyph_components(
+    glyph_array,
+    min_area=4,
+    ratio=0.18,
+    preserve_neighbors=False,
+):
+    if cv2 is None:
+        return glyph_array
+
+    mask = (glyph_array > 0).astype(np.uint8)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+        mask, connectivity=8
+    )
+
+    if num_labels <= 1:
+        return glyph_array
+
+    components = []
+    for label_index in range(1, num_labels):
+        area = int(stats[label_index, cv2.CC_STAT_AREA])
+        if area < min_area:
+            continue
+
+        x = int(stats[label_index, cv2.CC_STAT_LEFT])
+        y = int(stats[label_index, cv2.CC_STAT_TOP])
+        w = int(stats[label_index, cv2.CC_STAT_WIDTH])
+        h = int(stats[label_index, cv2.CC_STAT_HEIGHT])
+        components.append(
+            {
+                "label": label_index,
+                "area": area,
+                "x": x,
+                "y": y,
+                "w": w,
+                "h": h,
+                "cx": x + (w / 2.0),
+                "cy": y + (h / 2.0),
+            }
+        )
+
+    if not components:
+        return glyph_array
+
+    largest_area = max(component["area"] for component in components)
+    keep_threshold = max(min_area, int(round(largest_area * ratio)))
+    primary = [
+        component for component in components
+        if component["area"] >= keep_threshold
+    ]
+
+    if not primary:
+        primary = [max(components, key=lambda component: component["area"])]
+
+    kept_labels = {component["label"] for component in primary}
+
+    if preserve_neighbors:
+        ref_x1 = min(component["x"] for component in primary)
+        ref_y1 = min(component["y"] for component in primary)
+        ref_x2 = max(component["x"] + component["w"] for component in primary)
+        ref_y2 = max(component["y"] + component["h"] for component in primary)
+        ref_cx = (ref_x1 + ref_x2) / 2.0
+        ref_w = ref_x2 - ref_x1
+        ref_h = ref_y2 - ref_y1
+        neighbor_threshold = max(min_area, int(round(largest_area * 0.04)))
+
+        for component in components:
+            if component["label"] in kept_labels:
+                continue
+            if component["area"] < neighbor_threshold:
+                continue
+
+            horizontal_distance = abs(component["cx"] - ref_cx)
+            horizontal_limit = max(14, ref_w * 0.80)
+
+            if component["y"] + component["h"] < ref_y1:
+                vertical_gap = ref_y1 - (component["y"] + component["h"])
+            elif component["y"] > ref_y2:
+                vertical_gap = component["y"] - ref_y2
+            else:
+                vertical_gap = 0
+
+            if (
+                horizontal_distance <= horizontal_limit
+                and vertical_gap <= max(26, ref_h * 1.30)
+            ):
+                kept_labels.add(component["label"])
+
+    keep_mask = np.zeros_like(mask)
+    for label_index in kept_labels:
+        keep_mask[labels == label_index] = 1
+
+    if keep_mask.sum() == 0:
+        return glyph_array
+
+    return (keep_mask * 255).astype(np.uint8)
+
+
+def clean_loaded_glyph(glyph_gray, folder):
+    if cv2 is None:
+        return glyph_gray
+
+    glyph_array = np.array(glyph_gray, dtype=np.uint8)
+    if glyph_array.size == 0 or np.max(glyph_array) == 0:
+        return glyph_gray
+
+    preserve_neighbors = folder in MULTIPART_GLYPH_FOLDERS
+    ratio = 0.08 if preserve_neighbors else 0.18
+    cleaned = clean_loaded_glyph_components(
+        glyph_array,
+        min_area=4,
+        ratio=ratio,
+        preserve_neighbors=preserve_neighbors,
+    )
+    return Image.fromarray(cleaned, "L")
+
 
 def get_folder_name(char):
     if char.isupper():
@@ -195,22 +330,34 @@ def get_char_group(char):
 def get_char_metrics(char, cfg=None):
     group = get_char_group(char)
     metrics = DEFAULT_CHAR_METRICS.get(group, DEFAULT_CHAR_METRICS["other"]).copy()
+    metrics.setdefault("stroke_gain_multiplier", 1.0)
+    metrics.setdefault("char_spacing_before_delta", 0.0)
+    metrics.setdefault("char_spacing_delta", 0.0)
 
     if not cfg:
         return metrics
 
-    overrides = cfg.get("metric_overrides", {}).get(group, {})
-    scale_multiplier = float(overrides.get("scale_multiplier", 1.0))
-    width_multiplier = float(overrides.get("width_multiplier", 1.0))
-    baseline_delta = float(overrides.get("baseline_shift", 0.0))
+    def apply_overrides(source):
+        scale_multiplier = float(source.get("scale_multiplier", 1.0))
+        width_multiplier = float(source.get("width_multiplier", 1.0))
+        baseline_delta = float(source.get("baseline_shift", 0.0))
+        stroke_multiplier = float(source.get("stroke_gain_multiplier", 1.0))
+        spacing_before_delta = float(source.get("char_spacing_before_delta", 0.0))
+        spacing_delta = float(source.get("char_spacing_delta", 0.0))
 
-    min_scale, max_scale = metrics["scale_range"]
-    metrics["scale_range"] = (
-        min_scale * scale_multiplier,
-        max_scale * scale_multiplier,
-    )
-    metrics["width_factor"] *= width_multiplier
-    metrics["baseline_shift"] += baseline_delta
+        min_scale, max_scale = metrics["scale_range"]
+        metrics["scale_range"] = (
+            min_scale * scale_multiplier,
+            max_scale * scale_multiplier,
+        )
+        metrics["width_factor"] *= width_multiplier
+        metrics["baseline_shift"] += baseline_delta
+        metrics["stroke_gain_multiplier"] *= stroke_multiplier
+        metrics["char_spacing_before_delta"] += spacing_before_delta
+        metrics["char_spacing_delta"] += spacing_delta
+
+    apply_overrides(cfg.get("metric_overrides", {}).get(group, {}))
+    apply_overrides(cfg.get("char_overrides", {}).get(char, {}))
 
     return metrics
 
@@ -223,7 +370,11 @@ def estimate_word_width(word, cfg):
         min_scale, max_scale = metrics["scale_range"]
         scale = ((min_scale + max_scale) / 2) * cfg["render_scale_multiplier"]
         char_width = cfg["glyph_size"] * scale * metrics["width_factor"]
-        width += char_width + cfg["char_spacing"]
+        width += (
+            char_width
+            + cfg["char_spacing"]
+            + metrics["char_spacing_delta"]
+        )
 
     return int(width)
 
@@ -287,9 +438,9 @@ def load_glyph_library(glyphs_dir):
 
         for img in sorted(root.rglob("*.png")):
             folder = img.parent.name
-            library.setdefault(folder, []).append(
-                Image.open(img).convert("L")
-            )
+            glyph_gray = Image.open(img).convert("L")
+            glyph_gray = clean_loaded_glyph(glyph_gray, folder)
+            library.setdefault(folder, []).append(glyph_gray)
             found_images = True
 
     if missing_roots and not found_images:
@@ -428,6 +579,7 @@ def render_char(page, char, library, cfg, x, baseline, glyph_cache):
 
     glyph = random.choice(samples)
     metrics = get_char_metrics(char, cfg)
+    draw_x = x + metrics["char_spacing_before_delta"]
 
     angle = random.uniform(*cfg["rotation_range"])
     pressure = random.uniform(cfg["pressure_min"], cfg["pressure_max"])
@@ -436,6 +588,10 @@ def render_char(page, char, library, cfg, x, baseline, glyph_cache):
         -cfg["baseline_jitter"],
         cfg["baseline_jitter"]
     )
+    glyph_cfg = cfg.copy()
+    glyph_cfg["stroke_gain"] = (
+        cfg["stroke_gain"] * metrics["stroke_gain_multiplier"]
+    )
 
     glyph_rgba = prepare_glyph(
         glyph,
@@ -443,7 +599,7 @@ def render_char(page, char, library, cfg, x, baseline, glyph_cache):
         scale,
         angle,
         pressure,
-        cfg
+        glyph_cfg
     )
 
     gw, _ = glyph_rgba.size
@@ -455,11 +611,16 @@ def render_char(page, char, library, cfg, x, baseline, glyph_cache):
     ink_left, _, ink_right, ink_bottom = alpha_bbox
     y = baseline + baseline_shift - ink_bottom
 
-    paste_with_texture(page, glyph_rgba, int(round(x)), int(round(y)), cfg)
+    paste_with_texture(page, glyph_rgba, int(round(draw_x)), int(round(y)), cfg)
 
     ink_width = max(1, ink_right - ink_left)
     side_bearing = max(1, int(round((gw - ink_width) * 0.45)))
-    advance = ink_width + side_bearing + cfg["char_spacing"]
+    advance = (
+        ink_width
+        + side_bearing
+        + cfg["char_spacing"]
+        + metrics["char_spacing_delta"]
+    )
     advance = max(1, int(advance))
 
     return x + advance

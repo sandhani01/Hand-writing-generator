@@ -1,4 +1,10 @@
-import type { RenderOptions, SliderConfig, ControlGroup } from "./types";
+import type {
+  CharacterOverride,
+  CharacterSliderConfig,
+  RenderOptions,
+  SliderConfig,
+  ControlGroup,
+} from "./types";
 
 export const DEFAULT_TEXT_SIMPLE = `Every brave cat danced eagerly for gentle heroes.
 
@@ -48,6 +54,16 @@ export const FALLBACK_OPTIONS: RenderOptions = {
   commaScale: 1,
   commaShift: 0,
   dotScale: 1,
+  charOverrides: {},
+};
+
+export const EMPTY_CHARACTER_OVERRIDE: CharacterOverride = {
+  scaleMultiplier: 1,
+  widthMultiplier: 1,
+  baselineShift: 0,
+  strokeGainMultiplier: 1,
+  spacingBeforeDelta: 0,
+  spacingDelta: 0,
 };
 
 export const BASIC_CONTROLS: SliderConfig[] = [
@@ -320,6 +336,70 @@ export const ADVANCED_GROUPS: ControlGroup[] = [
   },
 ];
 
+export const CHARACTER_OVERRIDE_CONTROLS: CharacterSliderConfig[] = [
+  {
+    key: "scaleMultiplier",
+    label: "Size / height",
+    min: 0.4,
+    max: 2.2,
+    step: 0.01,
+    description: "Scales only this exact character.",
+    format: (value) => `${value.toFixed(2)}x`,
+  },
+  {
+    key: "widthMultiplier",
+    label: "Width / advance",
+    min: 0.4,
+    max: 2.0,
+    step: 0.01,
+    description: "Makes this character occupy less or more width.",
+    format: (value) => `${value.toFixed(2)}x`,
+  },
+  {
+    key: "baselineShift",
+    label: "Move up / down",
+    min: -32,
+    max: 32,
+    step: 1,
+    description: "Negative moves up. Positive moves down.",
+  },
+  {
+    key: "strokeGainMultiplier",
+    label: "Line thickness",
+    min: 0.5,
+    max: 2.5,
+    step: 0.01,
+    description: "Changes stroke weight for only this character.",
+    format: (value) => `${value.toFixed(2)}x`,
+  },
+  {
+    key: "spacingBeforeDelta",
+    label: "Space before",
+    min: -20,
+    max: 20,
+    step: 1,
+    description: "Shifts this character relative to the previous one.",
+  },
+  {
+    key: "spacingDelta",
+    label: "Space after",
+    min: -20,
+    max: 20,
+    step: 1,
+    description: "Adds or removes space after this character.",
+  },
+];
+
+export function normalizeRenderOptions(
+  options?: Partial<RenderOptions> | null
+): RenderOptions {
+  return {
+    ...FALLBACK_OPTIONS,
+    ...options,
+    charOverrides: options?.charOverrides ?? {},
+  };
+}
+
 export function formatControlValue(config: SliderConfig, value: number) {
   if (config.format) {
     return config.format(value);
@@ -329,4 +409,14 @@ export function formatControlValue(config: SliderConfig, value: number) {
 
 export function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+export function formatCharacterControlValue(
+  config: CharacterSliderConfig,
+  value: number
+) {
+  if (config.format) {
+    return config.format(value);
+  }
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
