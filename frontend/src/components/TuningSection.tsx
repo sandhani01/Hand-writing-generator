@@ -64,7 +64,7 @@ export function TuningSection({
   return (
     <article className="surface surface--raised">
       <WorkflowSection
-        step="03"
+        step="02"
         title="Tuning"
         subtitle="Make spacing and ink feel right. Basic controls stay visible; fine-tuning is optional."
         headerExtra={

@@ -6,8 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://127.0.0.1:8001',
-      '/output': 'http://127.0.0.1:8001',
+      '/api/v1': 'http://127.0.0.1:8000',
     },
   },
 })

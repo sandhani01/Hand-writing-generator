@@ -1,4 +1,5 @@
 export type UploadType = "alphabet" | "coding";
+export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
 /** Simple = alphabet datasets only in UI. Coding = alphabet + coding datasets. */
 export type AssignmentMode = "simple" | "coding";
@@ -48,11 +49,48 @@ export type CharacterOverride = {
 export type UploadCounts = {
   handwriting: number;
   coding: number;
+  handwritingLimit: number;
+  codingLimit: number;
 };
 
-export type DatasetResponse = {
-  handwriting?: string[];
-  coding?: string[];
+export type DatasetRecord = {
+  id: string;
+  user_id: string;
+  dataset_type: UploadType;
+  display_name: string;
+  source_image_path: string;
+  glyph_root: string;
+  status: JobStatus;
+  created_at: string;
+  updated_at?: string | null;
+  error_message?: string | null;
+};
+
+export type DatasetListResponse = {
+  items: DatasetRecord[];
+  alphabet_count: number;
+  coding_count: number;
+  alphabet_limit: number;
+  coding_limit: number;
+};
+
+export type BackgroundRecord = {
+  id: string;
+  user_id: string;
+  display_name: string;
+  source_image_path: string;
+  status: JobStatus;
+  is_default: boolean;
+  is_selected: boolean;
+  created_at: string;
+  updated_at?: string | null;
+  error_message?: string | null;
+};
+
+export type BackgroundListResponse = {
+  items: BackgroundRecord[];
+  custom_count: number;
+  background_limit: number;
 };
 
 export type DefaultsResponse = {
@@ -62,11 +100,36 @@ export type DefaultsResponse = {
   };
 };
 
-export type ExtractResponse = {
-  sessionId?: string;
-  datasets?: DatasetResponse;
+export type UserProfile = {
+  id: string;
+  email: string;
+  auth_mode: string;
+  created_at: string;
+};
+
+export type AuthResponse = {
+  access_token: string;
+  token_type: string;
+  expires_at: string;
+  user: UserProfile;
+};
+
+export type ApiError = {
+  detail?: string;
   error?: string;
   details?: string;
+};
+
+export type RenderJobResponse = {
+  id: string;
+  user_id: string;
+  text_content: string;
+  options_json: string;
+  output_path: string;
+  status: JobStatus;
+  created_at: string;
+  updated_at?: string | null;
+  error_message?: string | null;
 };
 
 export type NumericOptionKey = Exclude<

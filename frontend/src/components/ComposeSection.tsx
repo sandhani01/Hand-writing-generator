@@ -13,7 +13,7 @@ export function ComposeSection({ isCodingMode, text, onTextChange }: Props) {
   return (
     <article className="surface surface--raised">
       <WorkflowSection
-        step="02"
+        step="01"
         title="Compose"
         subtitle={
           isCodingMode

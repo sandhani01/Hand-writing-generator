@@ -24,6 +24,7 @@ DEFAULT_CFG = {
 
     "backgrounds_dir": str(PROJECT_DIR / "backgrounds"),
     "background_file": "ruled.png",
+    "background_path": None,
 
     "glyphs_dir": str(PROJECT_DIR / "glyph_sets"),
     "glyph_size": 44,
@@ -457,7 +458,11 @@ def load_glyph_library(glyphs_dir):
 
 
 def load_background(cfg):
-    bg_path = resolve_project_path(cfg["backgrounds_dir"]) / cfg["background_file"]
+    background_path = cfg.get("background_path")
+    if background_path:
+        bg_path = resolve_project_path(background_path)
+    else:
+        bg_path = resolve_project_path(cfg["backgrounds_dir"]) / cfg["background_file"]
 
     if not bg_path.exists():
         page = Image.new(

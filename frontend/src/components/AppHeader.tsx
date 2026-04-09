@@ -3,20 +3,24 @@ import { ThemeToggle } from "./ThemeToggle";
 type Props = {
   isCodingMode: boolean;
   theme: "dark" | "light";
+  userEmail: string;
   onToggleTheme: () => void;
   onChangeAssignmentType: () => void;
   onRefreshLibrary: () => void;
-  onResetSession: () => void;
+  onResetWorkspace: () => void;
+  onLogout: () => void;
   isLoadingDatasets: boolean;
 };
 
 export function AppHeader({
   isCodingMode,
   theme,
+  userEmail,
   onToggleTheme,
   onChangeAssignmentType,
   onRefreshLibrary,
-  onResetSession,
+  onResetWorkspace,
+  onLogout,
   isLoadingDatasets,
 }: Props) {
   return (
@@ -40,6 +44,9 @@ export function AppHeader({
         </p>
       </div>
       <nav className="app-header__toolbar" aria-label="Workspace actions">
+        <span className="user-chip" title={userEmail}>
+          {userEmail}
+        </span>
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         <button
           type="button"
@@ -54,10 +61,13 @@ export function AppHeader({
           onClick={onRefreshLibrary}
           disabled={isLoadingDatasets}
         >
-          {isLoadingDatasets ? "Refreshing..." : "Refresh dataset counts"}
+          {isLoadingDatasets ? "Refreshing..." : "Refresh datasets"}
         </button>
-        <button type="button" className="btn btn--ghost" onClick={onResetSession}>
+        <button type="button" className="btn btn--ghost" onClick={onResetWorkspace}>
           Reset workspace
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onLogout}>
+          Sign out
         </button>
       </nav>
     </header>
