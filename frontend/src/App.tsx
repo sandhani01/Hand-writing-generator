@@ -20,6 +20,7 @@ import { AssignmentGate } from "./components/AssignmentGate";
 import { ComposeSection } from "./components/ComposeSection";
 import { DatasetSection } from "./components/DatasetSection";
 import { PreviewSection } from "./components/PreviewSection";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { TuningSection } from "./components/TuningSection";
 import {
   logoutSupabaseSession,
@@ -1369,10 +1370,67 @@ export default function App() {
       <div className="app app--gate">
         <div className="gate-topbar">
           <span className="gate-brand">Handwritten Notes</span>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
-        <section className="auth-shell">
-          <div className="auth-panel surface surface--raised">
-            <p className="auth-panel__title">Checking your workspace...</p>
+        <section
+          className="workspace-loader-shell"
+          aria-labelledby="workspace-loader-title"
+        >
+          <div className="workspace-loader surface surface--raised">
+            <div className="workspace-loader__hero">
+              <p className="app-header__eyebrow">Opening Workspace</p>
+              <h1 className="workspace-loader__title" id="workspace-loader-title">
+                Preparing your handwriting engine
+              </h1>
+              <p className="workspace-loader__lede">
+                We&apos;re checking your session, restoring this workspace, and
+                getting the renderer ready for uploads and preview.
+              </p>
+            </div>
+
+            <div
+              className="workspace-loader__status"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="workspace-loader__pulse" aria-hidden>
+                <span />
+                <span />
+                <span />
+              </div>
+              <div className="workspace-loader__status-copy">
+                <p className="workspace-loader__status-label">
+                  Checking your workspace
+                </p>
+                <p className="workspace-loader__status-text">
+                  This usually takes just a moment.
+                </p>
+              </div>
+            </div>
+
+            <div className="workspace-loader__grid" aria-hidden>
+              <article className="workspace-loader__card">
+                <span className="workspace-loader__card-step">01</span>
+                <h2 className="workspace-loader__card-title">Verify session</h2>
+                <p className="workspace-loader__card-text">
+                  Confirming your sign-in and workspace access.
+                </p>
+              </article>
+              <article className="workspace-loader__card">
+                <span className="workspace-loader__card-step">02</span>
+                <h2 className="workspace-loader__card-title">Load assets</h2>
+                <p className="workspace-loader__card-text">
+                  Restoring datasets, backgrounds, and recent renders.
+                </p>
+              </article>
+              <article className="workspace-loader__card">
+                <span className="workspace-loader__card-step">03</span>
+                <h2 className="workspace-loader__card-title">Warm renderer</h2>
+                <p className="workspace-loader__card-text">
+                  Pulling in defaults so Compose opens ready to use.
+                </p>
+              </article>
+            </div>
           </div>
         </section>
       </div>
