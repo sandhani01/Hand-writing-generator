@@ -200,9 +200,7 @@ function BackgroundGroup({
       <div className="dataset-group__header">
         <div>
           <h3 className="dataset-group__title">Background datasets</h3>
-          <p className="dataset-group__helper">
-            Every user always has the default ruled page. Keep one personal background and switch between them before rendering.
-          </p>
+           
         </div>
       </div>
 
@@ -295,7 +293,7 @@ export function DatasetSection({
     <article className="surface surface--raised">
       <WorkflowSection
         step="03"
-        title="Assets"
+        title="Datasets"
         subtitle={
           isCodingMode
             ? "Manage handwriting datasets and page backgrounds for normal writing and coding assignments."
@@ -304,19 +302,19 @@ export function DatasetSection({
       >
         <div className="library-metrics library-metrics--wide" role="group" aria-label="Dataset quotas">
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Alphabet session quota</span>
+            <span className="metric-pill__label">Alphabet Datasets</span>
             <strong className="metric-pill__value" aria-live="polite">
               {availableCounts.handwriting} / {availableCounts.handwritingLimit}
             </strong>
           </div>
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Coding session quota</span>
+            <span className="metric-pill__label">Coding Datasets</span>
             <strong className="metric-pill__value" aria-live="polite">
               {availableCounts.coding} / {availableCounts.codingLimit}
             </strong>
           </div>
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Background session quota</span>
+            <span className="metric-pill__label">Background Datasets</span>
             <strong className="metric-pill__value" aria-live="polite">
               {backgroundCustomCount} / {backgroundLimit}
             </strong>
@@ -335,9 +333,7 @@ export function DatasetSection({
             <div className="dataset-group__header">
               <div>
                 <h3 className="dataset-group__title">Upload handwriting datasets</h3>
-                <p className="dataset-group__helper">
-                  Upload alphabet and coding sheets for this session first, then add one optional background below them.
-                </p>
+                
               </div>
             </div>
 
@@ -345,9 +341,7 @@ export function DatasetSection({
               <div className="upload-grid">
                 <label className="upload-tile">
                   <span className="upload-tile__title">Upload alphabet dataset (8x8)</span>
-                  <span className="upload-tile__hint">
-                    Letters, lowercase, uppercase, and digits. This is required before rendering.
-                  </span>
+                   
                   <input
                     type="file"
                     accept="image/*"
@@ -358,9 +352,7 @@ export function DatasetSection({
                 </label>
                 <label className="upload-tile">
                   <span className="upload-tile__title">Upload coding dataset (6x5)</span>
-                  <span className="upload-tile__hint">
-                    Operators, brackets, and punctuation for coding assignments.
-                  </span>
+                  
                   <input
                     type="file"
                     accept="image/*"
@@ -375,7 +367,7 @@ export function DatasetSection({
                 <label className="upload-tile">
                   <span className="upload-tile__title">Upload background dataset</span>
                   <span className="upload-tile__hint">
-                    Use a scanned page or notebook background. You can keep one personal background along with the default ruled page.
+                    Upload Your Background Custom here !
                   </span>
                   <input
                     type="file"
@@ -391,7 +383,7 @@ export function DatasetSection({
 
           <DatasetGroup
             title="Alphabet datasets"
-            helper="Used for normal text, numbers, and the base of every render."
+            helper=""
             datasets={alphabetDatasets}
             busyDatasetId={busyDatasetId}
             onRenameDataset={onRenameDataset}
@@ -400,7 +392,7 @@ export function DatasetSection({
 
           <DatasetGroup
             title="Coding datasets"
-            helper="Used for code symbols, punctuation, and operator-heavy assignments."
+            helper=""
             datasets={codingDatasets}
             busyDatasetId={busyDatasetId}
             onRenameDataset={onRenameDataset}

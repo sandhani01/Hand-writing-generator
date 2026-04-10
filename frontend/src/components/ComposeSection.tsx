@@ -1,12 +1,25 @@
+import { ErrorBanner } from "./ErrorBanner";
 import { WorkflowSection } from "./WorkflowSection";
 
 type Props = {
   isCodingMode: boolean;
   text: string;
+  canRender: boolean;
+  isRendering: boolean;
+  renderError: string | null;
   onTextChange: (value: string) => void;
+  onRender: () => void;
 };
 
-export function ComposeSection({ isCodingMode, text, onTextChange }: Props) {
+export function ComposeSection({
+  isCodingMode,
+  text,
+  canRender,
+  isRendering,
+  renderError,
+  onTextChange,
+  onRender,
+}: Props) {
   const composeId = "compose-field";
   const descId = "compose-field-desc";
 
@@ -15,20 +28,26 @@ export function ComposeSection({ isCodingMode, text, onTextChange }: Props) {
       <WorkflowSection
         step="01"
         title="Compose"
-        subtitle={
-          isCodingMode
-            ? "Keep blank lines. Use symbols from your coding dataset for best results."
-            : "Blank lines in the box stay blank in the output."
+        headerExtra={
+          <div className="workflow-actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={onRender}
+              disabled={!canRender || isRendering}
+              aria-busy={isRendering}
+            >
+              {isRendering ? "Rendering..." : "Render page"}
+            </button>
+          </div>
         }
       >
         <div className="compose-field">
           <label className="compose-label" htmlFor={composeId}>
-            {isCodingMode ? "Text / code" : "Text"}
+            {isCodingMode ? "Code :" : "Text :"}
           </label>
           <p id={descId} className="compose-field__hint">
-            {isCodingMode
-              ? "Supports brackets, operators, and punctuation when you have a coding dataset."
-              : "Line breaks in your editor are preserved in the image."}
+            
           </p>
           <textarea
             id={composeId}
@@ -42,6 +61,7 @@ export function ComposeSection({ isCodingMode, text, onTextChange }: Props) {
             autoCapitalize={isCodingMode ? "off" : "sentences"}
           />
         </div>
+        {renderError ? <ErrorBanner>{renderError}</ErrorBanner> : null}
       </WorkflowSection>
     </article>
   );

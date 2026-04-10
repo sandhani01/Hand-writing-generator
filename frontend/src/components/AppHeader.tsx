@@ -39,35 +39,38 @@ export function AppHeader({
         </div>
         <p className="app-header__lede" id="app-page-desc">
           {isCodingMode
-            ? "Use your datasets for letters and code symbols, then compose, tune, and export a PNG."
-            : "Use your alphabet datasets, then compose, tune, and export a PNG."}
+            ? "Upload Datasets -> Render -> Download Assingment "
+            : "Upload Datasets -> Render -> Download Assingment "}
         </p>
       </div>
       <nav className="app-header__toolbar" aria-label="Workspace actions">
         <span className="user-chip" title={userEmail}>
           {userEmail}
         </span>
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-        <button
-          type="button"
-          className="btn btn--ghost"
-          onClick={onChangeAssignmentType}
-        >
-          Choose mode
+        <button type="button" className="btn btn--ghost" onClick={onLogout}>
+          Sign out
         </button>
+        
+        
+        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         <button
           type="button"
           className="btn btn--ghost"
           onClick={onRefreshLibrary}
           disabled={isLoadingDatasets}
         >
+          
           {isLoadingDatasets ? "Refreshing..." : "Refresh datasets"}
         </button>
         <button type="button" className="btn btn--ghost" onClick={onResetWorkspace}>
           Reset workspace
         </button>
-        <button type="button" className="btn btn--ghost" onClick={onLogout}>
-          Sign out
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={onChangeAssignmentType}
+        >
+          Back
         </button>
       </nav>
     </header>

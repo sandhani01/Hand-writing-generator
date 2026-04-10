@@ -122,7 +122,7 @@ export function PreviewSection({
               <div>
                 <h3 className="history-panel__title">Recent renders</h3>
                 <p className="history-panel__text">
-                  Old renders stay here until they fall out of the newest-three limit.
+                  
                 </p>
               </div>
             </div>
@@ -130,9 +130,7 @@ export function PreviewSection({
             {renderHistory.length === 0 ? (
               <div className="dataset-empty">
                 <p className="dataset-empty__title">No saved renders yet</p>
-                <p className="dataset-empty__text">
-                  Render a page once and it will appear here with quick preview, download, and delete actions.
-                </p>
+                 
               </div>
             ) : (
               <div className="history-list">

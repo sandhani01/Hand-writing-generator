@@ -1433,7 +1433,11 @@ export default function App() {
           <ComposeSection
             isCodingMode={isCodingMode}
             text={text}
+            canRender={canRender}
+            isRendering={isRendering}
+            renderError={renderError}
             onTextChange={setText}
+            onRender={handleRender}
           />
 
           <TuningSection
@@ -1459,10 +1463,6 @@ export default function App() {
             }
             onApplyPreset={applyTuningPreset}
             onResetAllFilters={resetAllFilters}
-            canRender={canRender}
-            isRendering={isRendering}
-            onRender={handleRender}
-            renderError={renderError}
           />
 
           <DatasetSection

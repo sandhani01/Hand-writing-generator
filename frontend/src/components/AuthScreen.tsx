@@ -72,7 +72,7 @@ export function AuthScreen({
             <p className="auth-panel__lede">{subtitle}</p>
             <p className="auth-panel__meta">
               {providerMode === "supabase"
-                ? `${providerLabel}. Sign in here, then the backend verifies your bearer token and keeps uploaded assets only for the current workspace session.`
+                ? `${providerLabel}. Sign in here, then the backend verifies your bearer token and keeps uploaded Datasets only for the current workspace session.`
                 : `${providerLabel}. This mode is still available for local development, but the hosted flow is designed around Supabase login.`}
             </p>
           </div>

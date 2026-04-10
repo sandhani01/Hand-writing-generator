@@ -1,7 +1,6 @@
 import { useId } from "react";
 import { SliderControl } from "./SliderControl";
 import { WorkflowSection } from "./WorkflowSection";
-import { ErrorBanner } from "./ErrorBanner";
 import { CharacterOverridePanel } from "./CharacterOverridePanel";
 import { ADVANCED_GROUPS, BASIC_CONTROLS } from "../renderControls";
 import type {
@@ -33,10 +32,6 @@ type Props = {
   onInkColorChange: (color: string) => void;
   onInkColorReset: () => void;
   onResetAllFilters: () => void;
-  canRender: boolean;
-  isRendering: boolean;
-  onRender: () => void;
-  renderError: string | null;
 };
 
 export function TuningSection({
@@ -55,10 +50,6 @@ export function TuningSection({
   onInkColorChange,
   onInkColorReset,
   onResetAllFilters,
-  canRender,
-  isRendering,
-  onRender,
-  renderError,
 }: Props) {
   const advancedRegionId = useId();
   const advancedLabelId = useId();
@@ -68,7 +59,7 @@ export function TuningSection({
       <WorkflowSection
         step="02"
         title="Tuning"
-        subtitle="Make spacing and ink feel right. Basic controls stay visible; fine-tuning is optional."
+        
         headerExtra={
           <div className="workflow-actions">
             <button
@@ -77,15 +68,6 @@ export function TuningSection({
               onClick={onResetAllFilters}
             >
               Reset tuning
-            </button>
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={onRender}
-              disabled={!canRender || isRendering}
-              aria-busy={isRendering}
-            >
-              {isRendering ? "Rendering..." : "Render page"}
             </button>
           </div>
         }
@@ -138,11 +120,9 @@ export function TuningSection({
         <div className="advanced-bar">
           <div>
             <h3 id={advancedLabelId} className="advanced-bar__title">
-              Fine-tuning
+              Advanced Options
             </h3>
-            <p className="advanced-bar__text">
-              Ink, margins, and letter families.
-            </p>
+            
           </div>
           <button
             type="button"
@@ -157,7 +137,7 @@ export function TuningSection({
               data-open={showAdvanced}
               aria-hidden
             />
-            {showAdvanced ? "Hide fine-tuning" : "Show fine-tuning"}
+            {showAdvanced ? "Hide Advanced" : "Advanced"}
           </button>
         </div>
 
@@ -222,7 +202,6 @@ export function TuningSection({
           ))}
         </div>
 
-        {renderError ? <ErrorBanner>{renderError}</ErrorBanner> : null}
       </WorkflowSection>
     </article>
   );
