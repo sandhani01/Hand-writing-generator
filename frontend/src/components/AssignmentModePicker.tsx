@@ -57,11 +57,17 @@ export function AssignmentModePicker({ onSelect }: Props) {
     <div id="assignment-picker" className="mode-picker" role="dialog" aria-modal="true" aria-labelledby="mode-picker-title" aria-describedby="mode-picker-desc">
       <div className="mode-picker__inner">
         <header className="mode-picker__header">
+          <div className="mode-picker__icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </div>
           <h1 id="mode-picker-title" className="mode-picker__title">
-            What are you writing?
+            What are you writing today?
           </h1>
           <p id="mode-picker-desc" className="mode-picker__lede">
-            This sets which glyph sets you will see. You can change it anytime.
+            Choose your assignment type. This determines which glyph sets are available. You can change it anytime.
           </p>
         </header>
 
