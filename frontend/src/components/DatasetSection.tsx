@@ -295,9 +295,7 @@ export function DatasetSection({
         step="03"
         title="Datasets"
         subtitle={
-          isCodingMode
-            ? "Manage handwriting datasets and page backgrounds for normal writing and coding assignments."
-            : "Manage handwriting datasets and page backgrounds for your personal writing style."
+          "More Datasets -> More Human-Written !"
         }
       >
         <div className="library-metrics library-metrics--wide" role="group" aria-label="Dataset quotas">
