@@ -9,6 +9,11 @@ from sqlalchemy import text
 from ..config import get_settings
 from ..database import connection_scope
 
+try:
+    from celery import Celery
+except ImportError:  # pragma: no cover - optional until hosted deps are installed
+    Celery = None
+
 
 _executor: ThreadPoolExecutor | None = None
 _lock = Lock()
@@ -35,8 +40,16 @@ def start_job_system() -> None:
     with _lock:
         if _started:
             return
-        recover_interrupted_jobs()
-        _get_executor()
+        settings = get_settings()
+        if settings.job_backend == "local":
+            recover_interrupted_jobs()
+            _get_executor()
+        elif settings.job_backend == "celery":
+            _get_celery_app()
+        else:
+            raise RuntimeError(
+                f"Unsupported HANDWRITING_JOB_BACKEND={settings.job_backend!r}."
+            )
         _started = True
 
 
@@ -80,20 +93,45 @@ def recover_interrupted_jobs() -> None:
 
 
 def submit_dataset_job(dataset_id: str) -> None:
-    _get_executor().submit(_run_dataset_job, dataset_id)
+    settings = get_settings()
+    if settings.job_backend == "celery":
+        from ..worker_tasks import run_dataset_job_task
+
+        run_dataset_job_task.delay(dataset_id)
+        return
+
+    _get_executor().submit(run_dataset_job_now, dataset_id)
 
 
 def submit_render_job(render_id: str) -> None:
-    _get_executor().submit(_run_render_job, render_id)
+    settings = get_settings()
+    if settings.job_backend == "celery":
+        from ..worker_tasks import run_render_job_task
+
+        run_render_job_task.delay(render_id)
+        return
+
+    _get_executor().submit(run_render_job_now, render_id)
 
 
-def _run_dataset_job(dataset_id: str) -> None:
+def run_dataset_job_now(dataset_id: str) -> None:
     from .datasets import process_dataset_job
 
     process_dataset_job(dataset_id)
 
 
-def _run_render_job(render_id: str) -> None:
+def run_render_job_now(render_id: str) -> None:
     from .renders import process_render_job
 
     process_render_job(render_id)
+
+
+def _get_celery_app() -> Celery:
+    if Celery is None:
+        raise RuntimeError(
+            "celery[redis] is required when HANDWRITING_JOB_BACKEND=celery."
+        )
+
+    from ..celery_app import celery_app
+
+    return celery_app

@@ -5,8 +5,9 @@ import hmac
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 from typing import Annotated
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from fastapi import Header, HTTPException, status
 from sqlalchemy import text
@@ -15,8 +16,17 @@ from .config import get_settings
 from .database import connection_scope
 from .models import User
 
+try:
+    import jwt
+    from jwt import PyJWKClient
+except ImportError:  # pragma: no cover - optional until hosted deps are installed
+    jwt = None
+    PyJWKClient = None
+
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_jwks_clients: dict[str, object] = {}
+_jwks_lock = Lock()
 
 
 def _unauthorized(detail: str = "Authentication required.") -> HTTPException:
@@ -35,6 +45,13 @@ def _normalize_email(email: str) -> str:
             detail="Enter a valid email address.",
         )
     return normalized
+
+
+def _normalize_external_email(email: str | None, auth_mode: str, subject: str) -> str:
+    if email:
+        return email.strip().lower()
+    derived_id = str(uuid5(NAMESPACE_URL, f"handwriting:{auth_mode}:{subject}"))
+    return f"{derived_id}@{auth_mode}.auth.local"
 
 
 def _hash_password(password: str, salt_hex: str) -> str:
@@ -59,6 +76,10 @@ def _row_to_user(row) -> User:
         auth_mode=row["auth_mode"],
         created_at=row["created_at"],
     )
+
+
+def _external_user_id(auth_mode: str, subject: str) -> str:
+    return str(uuid5(NAMESPACE_URL, f"handwriting:{auth_mode}:{subject}"))
 
 
 def _create_session(connection, user_id: str) -> tuple[str, str]:
@@ -91,8 +112,9 @@ def ensure_local_auth_enabled() -> None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "Local email/password auth is disabled. "
-                "Set HANDWRITING_AUTH_MODE=local to use signup and login."
+                "Local email/password auth is disabled for this deployment. "
+                "Use the configured hosted auth provider instead, or set "
+                "HANDWRITING_AUTH_MODE=local for local signup/login."
             ),
         )
 
@@ -141,7 +163,13 @@ def signup_local_user(email: str, password: str) -> tuple[User, str, str]:
     with connection_scope() as connection:
         existing = (
             connection.execute(
-                text("SELECT id FROM users WHERE email = :email"),
+                text(
+                    """
+                    SELECT id
+                    FROM users
+                    WHERE email = :email AND auth_mode = 'local'
+                    """
+                ),
                 {"email": normalized_email},
             )
             .mappings()
@@ -197,7 +225,7 @@ def login_local_user(email: str, password: str) -> tuple[User, str, str]:
                     """
                     SELECT id, email, password_hash, password_salt, auth_mode, created_at
                     FROM users
-                    WHERE email = :email
+                    WHERE email = :email AND auth_mode = 'local'
                     """
                 ),
                 {"email": normalized_email},
@@ -219,6 +247,10 @@ def login_local_user(email: str, password: str) -> tuple[User, str, str]:
 
 def logout_access_token(token: str) -> None:
     if not token:
+        return
+
+    settings = get_settings()
+    if settings.auth_mode != "local":
         return
 
     with connection_scope() as connection:
@@ -247,6 +279,130 @@ def get_current_access_token(
             detail="Access tokens are not used while HANDWRITING_AUTH_MODE=dev.",
         )
     return _extract_bearer_token(authorization)
+
+
+def _get_jwks_client(jwks_url: str):
+    if PyJWKClient is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "PyJWT with crypto support is required for external JWT verification. "
+                "Install updated production requirements on the backend host."
+            ),
+        )
+
+    with _jwks_lock:
+        client = _jwks_clients.get(jwks_url)
+        if client is None:
+            client = PyJWKClient(jwks_url)
+            _jwks_clients[jwks_url] = client
+    return client
+
+
+def _decode_external_token(token: str) -> dict:
+    settings = get_settings()
+    if jwt is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "PyJWT with crypto support is required for external JWT verification. "
+                "Install updated production requirements on the backend host."
+            ),
+        )
+
+    decode_kwargs: dict[str, object] = {
+        "algorithms": settings.auth_jwt_algorithms or ["RS256", "ES256", "HS256"],
+    }
+    options: dict[str, bool] = {}
+
+    if settings.auth_jwt_audience:
+        decode_kwargs["audience"] = settings.auth_jwt_audience
+    else:
+        options["verify_aud"] = False
+
+    if settings.auth_jwt_issuer:
+        decode_kwargs["issuer"] = settings.auth_jwt_issuer
+    else:
+        options["verify_iss"] = False
+
+    if options:
+        decode_kwargs["options"] = options
+
+    try:
+        if settings.auth_jwt_secret:
+            return jwt.decode(token, settings.auth_jwt_secret, **decode_kwargs)
+
+        if not settings.auth_jwt_jwks_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=(
+                    "Set HANDWRITING_AUTH_JWT_JWKS_URL or HANDWRITING_AUTH_JWT_SECRET "
+                    "to verify hosted provider tokens."
+                ),
+            )
+
+        signing_key = _get_jwks_client(
+            settings.auth_jwt_jwks_url
+        ).get_signing_key_from_jwt(token)
+        return jwt.decode(token, signing_key.key, **decode_kwargs)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        message = str(exc).lower()
+        if "expired" in message:
+            raise _unauthorized("Your session token has expired. Please sign in again.")
+        raise _unauthorized("Invalid hosted auth token.")
+
+
+def _upsert_external_user(auth_mode: str, subject: str, email: str | None) -> User:
+    normalized_subject = subject.strip()
+    if not normalized_subject:
+        raise _unauthorized("Hosted auth token is missing a subject claim.")
+
+    user_id = _external_user_id(auth_mode, normalized_subject)
+    normalized_email = _normalize_external_email(email, auth_mode, normalized_subject)
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    with connection_scope() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO users (
+                    id, email, password_hash, password_salt, external_subject, auth_mode, created_at
+                )
+                VALUES (
+                    :id, :email, NULL, NULL, :external_subject, :auth_mode, :created_at
+                )
+                ON CONFLICT(id) DO UPDATE SET
+                    email = excluded.email,
+                    external_subject = excluded.external_subject,
+                    auth_mode = excluded.auth_mode
+                """
+            ),
+            {
+                "id": user_id,
+                "email": normalized_email,
+                "external_subject": normalized_subject,
+                "auth_mode": auth_mode,
+                "created_at": created_at,
+            },
+        )
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT id, email, auth_mode, created_at
+                    FROM users
+                    WHERE id = :id
+                    """
+                ),
+                {"id": user_id},
+            )
+            .mappings()
+            .first()
+        )
+
+    return _row_to_user(row)
 
 
 def _user_from_access_token(token: str) -> User:
@@ -281,6 +437,18 @@ def _user_from_access_token(token: str) -> User:
     return _row_to_user(row)
 
 
+def _user_from_external_token(token: str) -> User:
+    settings = get_settings()
+    claims = _decode_external_token(token)
+    subject = claims.get(settings.auth_subject_claim)
+    email = claims.get(settings.auth_email_claim)
+    if not isinstance(subject, str) or not subject.strip():
+        raise _unauthorized("Hosted auth token is missing a valid subject.")
+    if email is not None and not isinstance(email, str):
+        email = None
+    return _upsert_external_user(settings.auth_mode, subject, email)
+
+
 def get_current_user(
     authorization: Annotated[str | None, Header(alias="Authorization")] = None,
     x_dev_user_id: Annotated[str | None, Header(alias="X-Dev-User-Id")] = None,
@@ -297,11 +465,13 @@ def get_current_user(
         token = _extract_bearer_token(authorization)
         return _user_from_access_token(token)
 
+    if settings.uses_external_auth:
+        token = _extract_bearer_token(authorization)
+        return _user_from_external_token(token)
+
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail=(
-            "Configured auth mode is not implemented yet in this scaffold. "
-            "Switch HANDWRITING_AUTH_MODE=dev for local development, then wire "
-            "your hosted auth provider here."
+            "Configured auth mode is not implemented yet in this scaffold."
         ),
     )

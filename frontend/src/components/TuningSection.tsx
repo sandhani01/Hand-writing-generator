@@ -17,6 +17,7 @@ type Props = {
   supportsCharacterOverrides: boolean;
   showAdvanced: boolean;
   onToggleAdvanced: () => void;
+  onApplyPreset: (preset: "neat" | "natural" | "compact") => void;
   onNumericChange: (key: NumericOptionKey, value: number) => void;
   onNumericReset: (key: NumericOptionKey) => void;
   onCharacterOverrideChange: (
@@ -45,6 +46,7 @@ export function TuningSection({
   supportsCharacterOverrides,
   showAdvanced,
   onToggleAdvanced,
+  onApplyPreset,
   onNumericChange,
   onNumericReset,
   onCharacterOverrideChange,
@@ -99,6 +101,38 @@ export function TuningSection({
               onReset={onNumericReset}
             />
           ))}
+        </div>
+
+        <div className="preset-panel" aria-label="Quick looks">
+          <div className="preset-panel__copy">
+            <h3 className="preset-panel__title">Quick looks</h3>
+            <p className="preset-panel__text">
+              Start from a balanced preset, then refine with the sliders below.
+            </p>
+          </div>
+          <div className="preset-panel__actions">
+            <button
+              type="button"
+              className="preset-chip"
+              onClick={() => onApplyPreset("neat")}
+            >
+              Neat
+            </button>
+            <button
+              type="button"
+              className="preset-chip"
+              onClick={() => onApplyPreset("natural")}
+            >
+              Natural
+            </button>
+            <button
+              type="button"
+              className="preset-chip"
+              onClick={() => onApplyPreset("compact")}
+            >
+              Compact
+            </button>
+          </div>
         </div>
 
         <div className="advanced-bar">

@@ -1,73 +1,61 @@
-# React + TypeScript + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite frontend for the Handwritten Notes Generator.
 
-Currently, two official plugins are available:
+## What it does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- signs users in
+- manages alphabet, coding, and background datasets
+- sends render requests to the backend
+- previews and downloads the newest saved renders
 
-## React Compiler
+## Auth modes
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The frontend supports two auth modes:
 
-## Expanding the ESLint configuration
+- `local`
+  - uses backend endpoints:
+    - `POST /api/v1/auth/signup`
+    - `POST /api/v1/auth/login`
+- `supabase`
+  - signs in directly against Supabase Auth
+  - sends the returned bearer token to the backend
+  - backend verifies that token in `jwt` / `supabase` mode
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Environment
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Copy `.env.example` to `.env` and adjust values.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Local auth
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_API_BASE=http://127.0.0.1:8000
+VITE_AUTH_PROVIDER=local
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Supabase auth
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```env
+VITE_API_BASE=http://127.0.0.1:8000
+VITE_AUTH_PROVIDER=supabase
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key>
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+When using Supabase in the frontend, make sure the backend also matches:
+
+- `HANDWRITING_AUTH_MODE=supabase`
+- `HANDWRITING_SUPABASE_URL=https://<project>.supabase.co`
+
+## Run
+
+```powershell
+npm install
+npm run dev
+```
+
+## Build
+
+```powershell
+npm run build
 ```

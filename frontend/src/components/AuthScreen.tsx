@@ -10,6 +10,8 @@ type Props = {
   isSubmitting: boolean;
   error: string | null;
   lastUser: UserProfile | null;
+  providerLabel: string;
+  providerMode: "local" | "supabase";
   onToggleTheme: () => void;
   onSubmit: (mode: AuthMode, email: string, password: string) => Promise<void>;
 };
@@ -19,6 +21,8 @@ export function AuthScreen({
   isSubmitting,
   error,
   lastUser,
+  providerLabel,
+  providerMode,
   onToggleTheme,
   onSubmit,
 }: Props) {
@@ -38,7 +42,7 @@ export function AuthScreen({
     () =>
       mode === "login"
         ? "Your datasets, renders, and tuning history live behind your account now."
-        : "Create an account to keep your alphabet and coding datasets in one place.",
+        : "Create an account to keep your alphabet, coding, and background datasets in one place.",
     [mode]
   );
 
@@ -66,6 +70,11 @@ export function AuthScreen({
               {heading}
             </h1>
             <p className="auth-panel__lede">{subtitle}</p>
+            <p className="auth-panel__meta">
+              {providerMode === "supabase"
+                ? `${providerLabel}. Sign in here, then the backend uses your bearer token for datasets and renders.`
+                : `${providerLabel}. This mode is useful for local development before hosted auth is configured.`}
+            </p>
           </div>
 
           <div className="auth-tabs" role="tablist" aria-label="Authentication mode">

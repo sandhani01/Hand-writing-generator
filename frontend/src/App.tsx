@@ -7,9 +7,10 @@ import {
 import {
   clearStoredAuthSession,
   persistAuthSession,
-  readStoredAuthToken,
+  readStoredAuthSession,
   readStoredAuthUser,
 } from "./authStorage";
+import { authProvider, authProviderLabel } from "./authConfig";
 import { AuthScreen } from "./components/AuthScreen";
 import { AppHeader } from "./components/AppHeader";
 import { AssignmentGate } from "./components/AssignmentGate";
@@ -17,6 +18,12 @@ import { ComposeSection } from "./components/ComposeSection";
 import { DatasetSection } from "./components/DatasetSection";
 import { PreviewSection } from "./components/PreviewSection";
 import { TuningSection } from "./components/TuningSection";
+import {
+  logoutSupabaseSession,
+  refreshSupabaseSession,
+  signInWithSupabasePassword,
+  signUpWithSupabasePassword,
+} from "./providerAuth";
 import { useTheme } from "./useTheme";
 import {
   DEFAULT_TEXT_CODING,
@@ -30,6 +37,7 @@ import type {
   ApiError,
   AssignmentMode,
   AuthResponse,
+  AuthProviderMode,
   BackgroundListResponse,
   BackgroundRecord,
   CharacterOverrideKey,
@@ -39,6 +47,7 @@ import type {
   NumericOptionKey,
   RenderJobResponse,
   RenderOptions,
+  StoredAuthSession,
   UploadCounts,
   UploadType,
   UserProfile,
@@ -72,12 +81,22 @@ export default function App() {
     ((import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env
       ?.VITE_API_BASE || "").replace(/\/$/, "");
   const apiUrl = useCallback((path: string) => `${apiBase}${path}`, [apiBase]);
+  const isHostedAuth = authProvider === "supabase";
+  const initialStoredSession = readStoredAuthSession();
+  const hasStoredProviderMismatch = Boolean(
+    initialStoredSession && initialStoredSession.provider !== authProvider
+  );
+  const initialSession =
+    hasStoredProviderMismatch ? null : initialStoredSession;
 
   const [authToken, setAuthToken] = useState<string | null>(() =>
-    readStoredAuthToken()
+    initialSession?.accessToken ?? null
   );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() =>
-    readStoredAuthUser()
+    initialSession?.user ?? readStoredAuthUser()
+  );
+  const [refreshToken, setRefreshToken] = useState<string | null>(() =>
+    initialSession?.refreshToken ?? null
   );
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -144,6 +163,27 @@ export default function App() {
     [authToken]
   );
 
+  const persistSession = useCallback(
+    (
+      accessToken: string,
+      user: UserProfile,
+      provider: AuthProviderMode,
+      refreshTokenValue: string | null = null
+    ) => {
+      const session: StoredAuthSession = {
+        accessToken,
+        refreshToken: refreshTokenValue,
+        provider,
+        user,
+      };
+      persistAuthSession(session);
+      setAuthToken(accessToken);
+      setCurrentUser(user);
+      setRefreshToken(refreshTokenValue);
+    },
+    []
+  );
+
   const clearPreview = useCallback(() => {
     setPreviewUrl((current) => {
       if (current) {
@@ -157,6 +197,7 @@ export default function App() {
     clearStoredAuthSession();
     setAuthToken(null);
     setCurrentUser(null);
+    setRefreshToken(null);
     setAvailableCounts(EMPTY_COUNTS);
     setDatasets([]);
     setBackgrounds(EMPTY_BACKGROUNDS);
@@ -173,6 +214,23 @@ export default function App() {
       setAuthError(message);
     },
     [clearAuthState]
+  );
+
+  const fetchCurrentUser = useCallback(
+    async (token: string) => {
+      const response = await fetch(apiUrl("/api/v1/me"), {
+        headers: authHeaders(token),
+      });
+      let data: UserProfile | ApiError | null = null;
+      try {
+        data = (await response.json()) as UserProfile | ApiError;
+      } catch {
+        data = null;
+      }
+
+      return { response, data };
+    },
+    [apiUrl, authHeaders]
   );
 
   const setNumericOption = (key: NumericOptionKey, value: number) => {
@@ -364,6 +422,67 @@ export default function App() {
     [apiUrl, authHeaders, authToken, clearPreview, handleExpiredSession]
   );
 
+  const bootstrapAuthenticatedWorkspace = useCallback(
+    async (
+      accessToken: string,
+      provider: AuthProviderMode,
+      refreshTokenValue: string | null = null
+    ) => {
+      const attemptVerification = async (token: string) => {
+        const { response, data } = await fetchCurrentUser(token);
+        if (!response.ok || !data || !("email" in data)) {
+          throw new Error(
+            extractApiErrorMessage(
+              data as ApiError,
+              "Could not verify the authenticated user."
+            )
+          );
+        }
+        return data;
+      };
+
+      let verifiedToken = accessToken;
+      let verifiedRefreshToken = refreshTokenValue;
+
+      try {
+        const user = await attemptVerification(verifiedToken);
+        persistSession(verifiedToken, user, provider, verifiedRefreshToken);
+        setAuthError(null);
+        await Promise.all([
+          loadDatasets(verifiedToken),
+          loadBackgrounds(verifiedToken),
+          loadRenders(verifiedToken),
+        ]);
+        return;
+      } catch (error) {
+        const message = getErrorMessage(error, "Could not verify the authenticated user.");
+        if (provider !== "supabase" || !verifiedRefreshToken) {
+          throw new Error(message);
+        }
+      }
+
+      const refreshed = await refreshSupabaseSession(verifiedRefreshToken);
+      verifiedToken = refreshed.accessToken;
+      verifiedRefreshToken = refreshed.refreshToken ?? verifiedRefreshToken;
+
+      const refreshedUser = await attemptVerification(verifiedToken);
+      persistSession(verifiedToken, refreshedUser, provider, verifiedRefreshToken);
+      setAuthError(null);
+      await Promise.all([
+        loadDatasets(verifiedToken),
+        loadBackgrounds(verifiedToken),
+        loadRenders(verifiedToken),
+      ]);
+    },
+    [
+      fetchCurrentUser,
+      loadBackgrounds,
+      loadDatasets,
+      loadRenders,
+      persistSession,
+    ]
+  );
+
   const fetchRenderPreview = useCallback(
     async (renderId: string, tokenOverride?: string) => {
       const token = tokenOverride ?? authToken;
@@ -413,6 +532,12 @@ export default function App() {
   }, [loadRendererDefaults]);
 
   useEffect(() => {
+    if (hasStoredProviderMismatch) {
+      clearStoredAuthSession();
+    }
+  }, [hasStoredProviderMismatch]);
+
+  useEffect(() => {
     let cancelled = false;
 
     const verifySession = async () => {
@@ -426,43 +551,11 @@ export default function App() {
 
       setIsAuthChecking(true);
       try {
-        const response = await fetch(apiUrl("/api/v1/me"), {
-          headers: authHeaders(authToken),
-        });
-        let data: UserProfile | ApiError | null = null;
-        try {
-          data = (await response.json()) as UserProfile | ApiError;
-        } catch {
-          data = null;
-        }
-
-        if (response.status === 401) {
-          if (!cancelled) {
-            handleExpiredSession(
-              extractApiErrorMessage(
-                data as ApiError,
-                "Your session expired. Please sign in again."
-              )
-            );
-          }
-          return;
-        }
-
-        if (!response.ok || !data || !("email" in data)) {
-          throw new Error(
-            extractApiErrorMessage(data as ApiError, "Could not verify session.")
-          );
-        }
-
-        if (!cancelled) {
-          setCurrentUser(data);
-          setAuthError(null);
-          await Promise.all([
-            loadDatasets(authToken),
-            loadBackgrounds(authToken),
-            loadRenders(authToken),
-          ]);
-        }
+        await bootstrapAuthenticatedWorkspace(
+          authToken,
+          authProvider,
+          refreshToken
+        );
       } catch (error) {
         if (!cancelled) {
           handleExpiredSession(
@@ -481,13 +574,10 @@ export default function App() {
       cancelled = true;
     };
   }, [
-    apiUrl,
-    authHeaders,
     authToken,
+    bootstrapAuthenticatedWorkspace,
+    refreshToken,
     handleExpiredSession,
-    loadBackgrounds,
-    loadDatasets,
-    loadRenders,
   ]);
 
   useEffect(() => {
@@ -565,30 +655,46 @@ export default function App() {
     setAuthError(null);
 
     try {
-      const response = await fetch(apiUrl(`/api/v1/auth/${mode}`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = (await response.json()) as AuthResponse | ApiError;
-      if (!response.ok || !("access_token" in data)) {
-        throw new Error(
-          extractApiErrorMessage(
-            data as ApiError,
-            mode === "login" ? "Sign in failed." : "Account creation failed."
-          )
-        );
-      }
+      if (isHostedAuth) {
+        const session =
+          mode === "login"
+            ? await signInWithSupabasePassword(email, password)
+            : await signUpWithSupabasePassword(email, password);
 
-      persistAuthSession(data.access_token, data.user);
-      setAuthToken(data.access_token);
-      setCurrentUser(data.user);
-      setAuthError(null);
-      await Promise.all([
-        loadDatasets(data.access_token),
-        loadBackgrounds(data.access_token),
-        loadRenders(data.access_token),
-      ]);
+        await bootstrapAuthenticatedWorkspace(
+          session.accessToken,
+          "supabase",
+          session.refreshToken
+        );
+      } else {
+        const response = await fetch(apiUrl(`/api/v1/auth/${mode}`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        let data: AuthResponse | ApiError | null = null;
+        try {
+          data = (await response.json()) as AuthResponse | ApiError;
+        } catch {
+          data = null;
+        }
+        if (!response.ok || !data || !("access_token" in data)) {
+          throw new Error(
+            extractApiErrorMessage(
+              data as ApiError,
+              mode === "login" ? "Sign in failed." : "Account creation failed."
+            )
+          );
+        }
+
+        persistSession(data.access_token, data.user, "local", null);
+        setAuthError(null);
+        await Promise.all([
+          loadDatasets(data.access_token),
+          loadBackgrounds(data.access_token),
+          loadRenders(data.access_token),
+        ]);
+      }
     } catch (error) {
       setAuthError(getErrorMessage(error, "Authentication failed."));
     } finally {
@@ -1064,6 +1170,57 @@ export default function App() {
     setOptions(normalizeRenderOptions(defaultOptions));
   };
 
+  const applyTuningPreset = (preset: "neat" | "natural" | "compact") => {
+    const base = normalizeRenderOptions(defaultOptions);
+
+    if (preset === "neat") {
+      setOptions({
+        ...base,
+        lineHeight: Math.max(base.lineHeight, 88),
+        charSpacing: Math.max(base.charSpacing, 0),
+        wordSpacing: Math.max(20, base.wordSpacing - 2),
+        jitter: 0.6,
+        baselineJitter: 0.12,
+        lineDriftPerWord: 0.08,
+        wordSpacingJitter: 1.2,
+        rotation: 1.2,
+        strokeGain: Math.max(1.1, base.strokeGain * 0.96),
+        textureBlend: Math.max(0.04, base.textureBlend * 0.8),
+        edgeRoughness: 0,
+      });
+      return;
+    }
+
+    if (preset === "natural") {
+      setOptions({
+        ...base,
+        jitter: 1.8,
+        baselineJitter: 0.45,
+        lineDriftPerWord: 0.32,
+        wordSpacingJitter: 4.5,
+        rotation: 2.6,
+        edgeRoughness: 0.05,
+        textureBlend: Math.max(0.1, base.textureBlend),
+      });
+      return;
+    }
+
+    setOptions({
+      ...base,
+      lineHeight: Math.max(60, base.lineHeight - 8),
+      charSpacing: base.charSpacing - 1,
+      wordSpacing: Math.max(14, base.wordSpacing - 6),
+      overallScale: Math.max(0.9, base.overallScale * 0.96),
+      marginRight: Math.max(18, base.marginRight - 4),
+      jitter: 0.9,
+      baselineJitter: 0.2,
+      lineDriftPerWord: 0.12,
+      wordSpacingJitter: 2.5,
+      rotation: 1.6,
+      strokeGain: Math.max(1.08, base.strokeGain * 0.95),
+    });
+  };
+
   const selectAssignmentMode = (mode: AssignmentMode) => {
     setAssignmentMode(mode);
     setText(mode === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE);
@@ -1078,10 +1235,14 @@ export default function App() {
   const handleLogout = useCallback(async () => {
     if (authToken) {
       try {
-        await fetch(apiUrl("/api/v1/auth/logout"), {
-          method: "POST",
-          headers: authHeaders(),
-        });
+        if (isHostedAuth) {
+          await logoutSupabaseSession(authToken);
+        } else {
+          await fetch(apiUrl("/api/v1/auth/logout"), {
+            method: "POST",
+            headers: authHeaders(),
+          });
+        }
       } catch {
         // Ignore logout network failures and still clear local state.
       }
@@ -1094,7 +1255,7 @@ export default function App() {
     setUploadError(null);
     setRenderError(null);
     setPreviewError(null);
-  }, [apiUrl, authHeaders, authToken, clearAuthState]);
+  }, [apiUrl, authHeaders, authToken, clearAuthState, isHostedAuth]);
 
   const isCodingMode = assignmentMode === "coding";
   const userForAuth = useMemo(() => currentUser ?? readStoredAuthUser(), [currentUser]);
@@ -1133,6 +1294,8 @@ export default function App() {
         isSubmitting={isAuthenticating}
         error={authError}
         lastUser={userForAuth}
+        providerLabel={authProviderLabel}
+        providerMode={authProvider}
         onToggleTheme={toggleTheme}
         onSubmit={handleAuthenticate}
       />
@@ -1202,6 +1365,7 @@ export default function App() {
                 inkColor: defaultOptions.inkColor,
               }))
             }
+            onApplyPreset={applyTuningPreset}
             onResetAllFilters={resetAllFilters}
             canRender={canRender}
             isRendering={isRendering}

@@ -83,6 +83,33 @@ class Settings:
             "Handwritten Notes Backend",
         )
         self.auth_mode = os.environ.get("HANDWRITING_AUTH_MODE", "local").lower()
+        self.supabase_url = os.environ.get("HANDWRITING_SUPABASE_URL", "").strip().rstrip("/")
+        self.auth_jwt_issuer = os.environ.get(
+            "HANDWRITING_AUTH_JWT_ISSUER", ""
+        ).strip()
+        self.auth_jwt_audience = os.environ.get(
+            "HANDWRITING_AUTH_JWT_AUDIENCE", ""
+        ).strip()
+        self.auth_jwt_jwks_url = os.environ.get(
+            "HANDWRITING_AUTH_JWT_JWKS_URL", ""
+        ).strip()
+        self.auth_jwt_secret = os.environ.get(
+            "HANDWRITING_AUTH_JWT_SECRET", ""
+        ).strip()
+        self.auth_jwt_algorithms = [
+            item.strip()
+            for item in os.environ.get(
+                "HANDWRITING_AUTH_JWT_ALGORITHMS",
+                "RS256,ES256,HS256",
+            ).split(",")
+            if item.strip()
+        ]
+        self.auth_subject_claim = os.environ.get(
+            "HANDWRITING_AUTH_SUBJECT_CLAIM", "sub"
+        ).strip()
+        self.auth_email_claim = os.environ.get(
+            "HANDWRITING_AUTH_EMAIL_CLAIM", "email"
+        ).strip()
         self.dev_user_id = os.environ.get("HANDWRITING_DEV_USER_ID", "demo-user")
         self.dev_user_email = os.environ.get(
             "HANDWRITING_DEV_USER_EMAIL",
@@ -106,6 +133,27 @@ class Settings:
         self.max_backgrounds = int(
             os.environ.get("HANDWRITING_MAX_BACKGROUNDS", "1")
         )
+        self.job_backend = os.environ.get(
+            "HANDWRITING_JOB_BACKEND",
+            "local",
+        ).strip().lower()
+        self.redis_url = os.environ.get("HANDWRITING_REDIS_URL", "").strip()
+        self.celery_broker_url = os.environ.get(
+            "HANDWRITING_CELERY_BROKER_URL",
+            self.redis_url,
+        ).strip()
+        self.celery_result_backend = os.environ.get(
+            "HANDWRITING_CELERY_RESULT_BACKEND",
+            self.redis_url,
+        ).strip()
+        self.celery_task_always_eager = _env_flag(
+            "HANDWRITING_CELERY_TASK_ALWAYS_EAGER",
+            False,
+        )
+        self.job_queue_name = os.environ.get(
+            "HANDWRITING_JOB_QUEUE_NAME",
+            "handwriting",
+        ).strip() or "handwriting"
         self.job_workers = int(os.environ.get("HANDWRITING_JOB_WORKERS", "2"))
         self.default_background_path = Path(
             os.environ.get(
@@ -113,6 +161,15 @@ class Settings:
                 self.project_dir / "backgrounds" / "ruled.png",
             )
         )
+        if self.auth_mode == "supabase" and self.supabase_url:
+            if not self.auth_jwt_issuer:
+                self.auth_jwt_issuer = f"{self.supabase_url}/auth/v1"
+            if not self.auth_jwt_jwks_url:
+                self.auth_jwt_jwks_url = (
+                    f"{self.supabase_url}/auth/v1/.well-known/jwks.json"
+                )
+            if not self.auth_jwt_audience:
+                self.auth_jwt_audience = "authenticated"
         self.cors_origins = [
             origin.strip()
             for origin in os.environ.get(
@@ -129,6 +186,14 @@ class Settings:
     @property
     def uses_object_storage(self) -> bool:
         return self.storage_backend != "local"
+
+    @property
+    def uses_external_auth(self) -> bool:
+        return self.auth_mode in {"jwt", "supabase"}
+
+    @property
+    def uses_celery(self) -> bool:
+        return self.job_backend == "celery"
 
 
 @lru_cache(maxsize=1)

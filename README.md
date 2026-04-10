@@ -144,6 +144,13 @@ Auth default:
 - local email/password auth is enabled by default
 - sign up or sign in from the frontend UI
 
+Hosted auth options:
+
+- `HANDWRITING_AUTH_MODE=jwt` for a generic OIDC/JWT provider
+- `HANDWRITING_AUTH_MODE=supabase` for Supabase JWTs
+- configure issuer/audience/JWKS or a shared JWT secret in:
+  - `projects/backend/.env.example`
+
 Optional dev auth fallback:
 
 - `X-Dev-User-Id: demo-user`
@@ -152,6 +159,8 @@ Optional dev auth fallback:
 Config template:
 
 - `projects/backend/.env.example`
+- production template: `projects/backend/.env.render.supabase.r2.example`
+- frontend production template: `frontend/.env.production.example`
 
 ---
 
@@ -197,6 +206,16 @@ Hosted backgrounds:
 - every user always starts with the default background:
   - `projects/backgrounds/ruled.png`
 - every user can keep up to `1` custom uploaded background
+
+Hosted queue mode:
+
+- local default: in-process worker threads
+- hosted option: Celery + Redis
+- worker command:
+
+```powershell
+celery -A backend.celery_app.celery_app worker --loglevel=info
+```
 
 ---
 

@@ -185,6 +185,13 @@ img {
   line-height: 1.6;
 }
 
+.auth-panel__meta {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--ink-tertiary);
+}
+
 .auth-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1375,6 +1382,72 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
   grid-template-columns: repeat(auto-fit, minmax(192px, 1fr));
 }
 
+.preset-panel {
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
+  border-radius: calc(var(--radius-lg) - 2px);
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-elevated) 92%, transparent) 0%,
+    color-mix(in srgb, var(--bg-surface) 96%, transparent) 100%
+  );
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+}
+
+.preset-panel__copy {
+  min-width: 0;
+}
+
+.preset-panel__title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.preset-panel__text {
+  margin: 0.22rem 0 0;
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.preset-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.preset-chip {
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+  background: var(--bg-surface);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  padding: 0.42rem 0.88rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    border-color 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.preset-chip:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: color-mix(in srgb, var(--accent-dim) 28%, var(--bg-surface));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent-glow) 42%, transparent);
+}
+
 .slider-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -1967,6 +2040,14 @@ html[data-theme="light"] .btn--primary {
   .compose-input {
     min-height: 200px;
     font-size: 16px;
+  }
+
+  .preset-panel {
+    align-items: stretch;
+  }
+
+  .preset-panel__actions {
+    justify-content: flex-start;
   }
 
   .character-picker {

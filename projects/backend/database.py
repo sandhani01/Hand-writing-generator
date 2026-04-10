@@ -17,13 +17,14 @@ _SCHEMA_STATEMENTS = [
         email TEXT NOT NULL,
         password_hash TEXT,
         password_salt TEXT,
+        external_subject TEXT,
         auth_mode TEXT NOT NULL,
         created_at TEXT NOT NULL
     )
     """,
     """
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique
-    ON users(email)
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth_mode_email_unique
+    ON users(auth_mode, email)
     """,
     """
     CREATE TABLE IF NOT EXISTS datasets (
@@ -158,8 +159,27 @@ def _apply_runtime_migrations(connection: Connection) -> None:
         connection.execute(text("ALTER TABLE users ADD COLUMN password_hash TEXT"))
     if "password_salt" not in user_columns:
         connection.execute(text("ALTER TABLE users ADD COLUMN password_salt TEXT"))
+    if "external_subject" not in user_columns:
+        connection.execute(text("ALTER TABLE users ADD COLUMN external_subject TEXT"))
     connection.execute(
-        text("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)")
+        text("DROP INDEX IF EXISTS idx_users_email_unique")
+    )
+    connection.execute(
+        text(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth_mode_email_unique
+            ON users(auth_mode, email)
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth_subject_unique
+            ON users(auth_mode, external_subject)
+            WHERE external_subject IS NOT NULL
+            """
+        )
     )
 
     dataset_columns = _column_names(connection, "datasets")

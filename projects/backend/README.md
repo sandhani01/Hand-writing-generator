@@ -5,16 +5,19 @@ This package is the hosted, multi-user backend for the handwriting app.
 It wraps the existing `extractor.py` and `renderer.py` pipeline with:
 
 - local email/password auth
+- hosted provider-ready JWT auth (`jwt` / `supabase` modes)
 - per-user datasets
 - dataset quotas
 - render history
 - background extraction/render jobs
 - cloud-ready database and object-storage configuration
+- queue-ready worker execution
 
 ## What is implemented
 
 - FastAPI app entrypoint
 - local email/password authentication
+- hosted bearer-token verification for `jwt` and `supabase` auth modes
 - token-based login sessions
 - user-aware dataset records
 - dataset rename + delete
@@ -35,6 +38,8 @@ It wraps the existing `extractor.py` and `renderer.py` pipeline with:
 - cloud-ready config for:
   - PostgreSQL via `HANDWRITING_DATABASE_URL`
   - S3-compatible object storage via `HANDWRITING_STORAGE_BACKEND=s3`
+- queue-ready config for:
+  - Celery + Redis via `HANDWRITING_JOB_BACKEND=celery`
 
 ## Current auth
 
@@ -54,6 +59,34 @@ Optional local dev fallback:
 - set `HANDWRITING_AUTH_MODE=dev`
 - then use `X-Dev-User-Id` and `X-Dev-User-Email`
 
+### Hosted auth mode
+
+You can switch the backend to provider-backed bearer tokens:
+
+- `HANDWRITING_AUTH_MODE=jwt`
+- or `HANDWRITING_AUTH_MODE=supabase`
+
+For generic JWT/OIDC verification, set:
+
+- `HANDWRITING_AUTH_JWT_ISSUER`
+- `HANDWRITING_AUTH_JWT_AUDIENCE`
+- `HANDWRITING_AUTH_JWT_JWKS_URL`
+
+If your provider uses a symmetric secret instead of JWKS, set:
+
+- `HANDWRITING_AUTH_JWT_SECRET`
+
+For Supabase, you can usually set just:
+
+- `HANDWRITING_AUTH_MODE=supabase`
+- `HANDWRITING_SUPABASE_URL=https://<project>.supabase.co`
+
+and the backend will derive:
+
+- issuer: `<supabase-url>/auth/v1`
+- jwks url: `<supabase-url>/auth/v1/.well-known/jwks.json`
+- audience: `authenticated`
+
 ## Background jobs
 
 Uploads and renders no longer block the request until the pipeline finishes.
@@ -67,7 +100,16 @@ Current implementation:
 Important:
 
 - this is already a real background-job flow for local hosting
-- for larger production scale, the next step would be moving the worker to a separate process/queue service
+- for hosted scale, switch to:
+  - `HANDWRITING_JOB_BACKEND=celery`
+  - Redis broker / result backend
+  - a separate Celery worker process
+
+Worker command:
+
+```powershell
+celery -A backend.celery_app.celery_app worker --loglevel=info
+```
 
 ## Storage and database
 
@@ -90,6 +132,13 @@ You can switch to hosted infrastructure by configuration:
 
 API routes stay the same, so the frontend barely changes.
 
+Recommended hosted shape:
+
+- auth: Supabase or another JWT/OIDC provider
+- database: Postgres
+- storage: S3 / Cloudflare R2
+- jobs: Celery + Redis
+
 ## Run locally
 
 From `projects/`:
@@ -106,6 +155,14 @@ API base:
 Docs:
 
 `http://127.0.0.1:8000/docs`
+
+### Hosted worker mode
+
+```powershell
+set HANDWRITING_JOB_BACKEND=celery
+set HANDWRITING_REDIS_URL=redis://localhost:6379/0
+celery -A backend.celery_app.celery_app worker --loglevel=info
+```
 
 ## Useful endpoints
 
@@ -143,10 +200,25 @@ When using local storage:
 Use:
 
 - `backend/.env.example`
+- `backend/.env.render.supabase.r2.example` for Render + Supabase + R2 deployment
 
 ## What is next after this layer
 
-- swap in real hosted auth provider verification
-- move workers to a separate queue service
+- connect the frontend login flow to your hosted auth provider
+- point `HANDWRITING_DATABASE_URL` at managed Postgres
+- point `HANDWRITING_STORAGE_BACKEND=s3` at your bucket
+- run the worker as a separate Celery service
 - add dataset selection per render
 - add signed/public asset URLs for CDN-backed delivery
+
+## Deployment quickstart (Render + Supabase + R2)
+
+1. Copy `backend/.env.render.supabase.r2.example` values into Render environment variables for:
+   - API service
+   - Worker service
+2. Use the same env values for both API and worker, except process command:
+   - API: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+   - Worker: `celery -A backend.celery_app.celery_app worker --loglevel=info`
+3. In Supabase Auth, configure your frontend URL and enable the email login settings you want.
+4. Set frontend production env from `frontend/.env.production.example`.
+5. Update `HANDWRITING_CORS_ORIGINS` to your real frontend domain.

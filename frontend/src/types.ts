@@ -107,6 +107,15 @@ export type UserProfile = {
   created_at: string;
 };
 
+export type AuthProviderMode = "local" | "supabase";
+
+export type StoredAuthSession = {
+  accessToken: string;
+  refreshToken: string | null;
+  provider: AuthProviderMode;
+  user: UserProfile;
+};
+
 export type AuthResponse = {
   access_token: string;
   token_type: string;
