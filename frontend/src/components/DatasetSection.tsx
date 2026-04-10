@@ -295,7 +295,7 @@ export function DatasetSection({
         step="03"
         title="Datasets"
         subtitle={
-          "More Datasets -> More Human-Written !"
+          isCodingMode ? "More Datasets -> More Human-Written !!!" : "More Datasets -> More Human-Written !!!"
         }
       >
         <div className="library-metrics library-metrics--wide" role="group" aria-label="Dataset quotas">
