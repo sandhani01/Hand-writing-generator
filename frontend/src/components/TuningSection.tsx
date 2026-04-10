@@ -87,10 +87,8 @@ export function TuningSection({
 
         <div className="preset-panel" aria-label="Quick looks">
           <div className="preset-panel__copy">
-            <h3 className="preset-panel__title">Quick looks</h3>
-            <p className="preset-panel__text">
-              Start from a balanced preset, then refine with the sliders below.
-            </p>
+            <h3 className="preset-panel__title">Quick Preset</h3>
+            
           </div>
           <div className="preset-panel__actions">
             <button
