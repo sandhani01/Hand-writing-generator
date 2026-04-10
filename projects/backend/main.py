@@ -12,8 +12,7 @@ from .api.routes.health import router as health_router
 from .api.routes.renders import router as renders_router
 from .api.routes.users import router as users_router
 from .config import get_settings
-from .database import init_db
-from .services.jobs import start_job_system, stop_job_system
+from .workspace import cleanup_stale_workspaces, prepare_workspace_runtime
 
 
 settings = get_settings()
@@ -34,13 +33,13 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup() -> None:
-    init_db()
-    start_job_system()
+    prepare_workspace_runtime()
+    cleanup_stale_workspaces()
 
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
-    stop_job_system()
+    pass
 
 
 @app.get("/", include_in_schema=False)

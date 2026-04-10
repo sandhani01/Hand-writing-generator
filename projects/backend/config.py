@@ -27,6 +27,12 @@ class Settings:
                 self.data_dir / "tmp",
             )
         )
+        self.workspaces_dir = Path(
+            os.environ.get(
+                "HANDWRITING_WORKSPACES_DIR",
+                self.data_dir / "workspaces",
+            )
+        )
         self.database_path = Path(
             os.environ.get(
                 "HANDWRITING_DATABASE_PATH",
@@ -117,6 +123,12 @@ class Settings:
         )
         self.session_ttl_hours = int(
             os.environ.get("HANDWRITING_SESSION_TTL_HOURS", "168")
+        )
+        self.workspace_ttl_hours = int(
+            os.environ.get(
+                "HANDWRITING_WORKSPACE_TTL_HOURS",
+                os.environ.get("HANDWRITING_SESSION_TTL_HOURS", "24"),
+            )
         )
         self.password_hash_iterations = int(
             os.environ.get("HANDWRITING_PASSWORD_HASH_ITERATIONS", "600000")

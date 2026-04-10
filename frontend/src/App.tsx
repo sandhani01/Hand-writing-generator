@@ -6,9 +6,12 @@ import {
 } from "./assignmentModeStorage";
 import {
   clearStoredAuthSession,
+  clearStoredWorkspaceSessionId,
   persistAuthSession,
+  persistWorkspaceSessionId,
   readStoredAuthSession,
   readStoredAuthUser,
+  readStoredWorkspaceSessionId,
 } from "./authStorage";
 import { authProvider, authProviderLabel } from "./authConfig";
 import { AuthScreen } from "./components/AuthScreen";
@@ -76,6 +79,13 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function createWorkspaceSessionId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `ws-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+}
+
 export default function App() {
   const apiBase =
     ((import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env
@@ -97,6 +107,9 @@ export default function App() {
   );
   const [refreshToken, setRefreshToken] = useState<string | null>(() =>
     initialSession?.refreshToken ?? null
+  );
+  const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(() =>
+    readStoredWorkspaceSessionId()
   );
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -144,6 +157,7 @@ export default function App() {
   );
   const canRender = Boolean(
     authToken &&
+      workspaceSessionId &&
       datasets.some(
         (dataset) =>
           dataset.dataset_type === "alphabet" && dataset.status === "completed"
@@ -151,16 +165,21 @@ export default function App() {
   );
 
   const authHeaders = useCallback(
-    (tokenOverride?: string): Record<string, string> => {
+    (
+      tokenOverride?: string,
+      workspaceOverride?: string
+    ): Record<string, string> => {
       const token = tokenOverride ?? authToken;
-      if (!token) {
+      const activeWorkspaceSessionId = workspaceOverride ?? workspaceSessionId;
+      if (!token || !activeWorkspaceSessionId) {
         return {};
       }
       return {
         Authorization: `Bearer ${token}`,
+        "X-Workspace-Session": activeWorkspaceSessionId,
       };
     },
-    [authToken]
+    [authToken, workspaceSessionId]
   );
 
   const persistSession = useCallback(
@@ -184,6 +203,11 @@ export default function App() {
     []
   );
 
+  const persistWorkspaceSession = useCallback((nextWorkspaceSessionId: string) => {
+    persistWorkspaceSessionId(nextWorkspaceSessionId);
+    setWorkspaceSessionId(nextWorkspaceSessionId);
+  }, []);
+
   const clearPreview = useCallback(() => {
     setPreviewUrl((current) => {
       if (current) {
@@ -195,9 +219,11 @@ export default function App() {
 
   const clearAuthState = useCallback(() => {
     clearStoredAuthSession();
+    clearStoredWorkspaceSessionId();
     setAuthToken(null);
     setCurrentUser(null);
     setRefreshToken(null);
+    setWorkspaceSessionId(null);
     setAvailableCounts(EMPTY_COUNTS);
     setDatasets([]);
     setBackgrounds(EMPTY_BACKGROUNDS);
@@ -217,9 +243,9 @@ export default function App() {
   );
 
   const fetchCurrentUser = useCallback(
-    async (token: string) => {
+    async (token: string, workspaceOverride?: string) => {
       const response = await fetch(apiUrl("/api/v1/me"), {
-        headers: authHeaders(token),
+        headers: authHeaders(token, workspaceOverride),
       });
       let data: UserProfile | ApiError | null = null;
       try {
@@ -264,9 +290,10 @@ export default function App() {
   }, [apiUrl]);
 
   const loadDatasets = useCallback(
-    async (tokenOverride?: string) => {
+    async (tokenOverride?: string, workspaceOverride?: string) => {
       const token = tokenOverride ?? authToken;
-      if (!token) {
+      const activeWorkspaceSessionId = workspaceOverride ?? workspaceSessionId;
+      if (!token || !activeWorkspaceSessionId) {
         setAvailableCounts(EMPTY_COUNTS);
         setDatasets([]);
         return;
@@ -275,7 +302,7 @@ export default function App() {
       setIsLoadingDatasets(true);
       try {
         const response = await fetch(apiUrl("/api/v1/datasets"), {
-          headers: authHeaders(token),
+          headers: authHeaders(token, activeWorkspaceSessionId),
         });
         let data: DatasetListResponse | ApiError | null = null;
         try {
@@ -315,13 +342,14 @@ export default function App() {
         setIsLoadingDatasets(false);
       }
     },
-    [apiUrl, authHeaders, authToken, handleExpiredSession]
+    [apiUrl, authHeaders, authToken, handleExpiredSession, workspaceSessionId]
   );
 
   const loadBackgrounds = useCallback(
-    async (tokenOverride?: string) => {
+    async (tokenOverride?: string, workspaceOverride?: string) => {
       const token = tokenOverride ?? authToken;
-      if (!token) {
+      const activeWorkspaceSessionId = workspaceOverride ?? workspaceSessionId;
+      if (!token || !activeWorkspaceSessionId) {
         setBackgrounds(EMPTY_BACKGROUNDS);
         setBackgroundLimit(DEFAULT_BACKGROUND_LIMIT);
         setBackgroundCustomCount(0);
@@ -330,7 +358,7 @@ export default function App() {
 
       try {
         const response = await fetch(apiUrl("/api/v1/backgrounds"), {
-          headers: authHeaders(token),
+          headers: authHeaders(token, activeWorkspaceSessionId),
         });
         let data: BackgroundListResponse | ApiError | null = null;
         try {
@@ -364,13 +392,14 @@ export default function App() {
         );
       }
     },
-    [apiUrl, authHeaders, authToken, handleExpiredSession]
+    [apiUrl, authHeaders, authToken, handleExpiredSession, workspaceSessionId]
   );
 
   const loadRenders = useCallback(
-    async (tokenOverride?: string) => {
+    async (tokenOverride?: string, workspaceOverride?: string) => {
       const token = tokenOverride ?? authToken;
-      if (!token) {
+      const activeWorkspaceSessionId = workspaceOverride ?? workspaceSessionId;
+      if (!token || !activeWorkspaceSessionId) {
         setRenderHistory([]);
         setSelectedRenderId(null);
         return;
@@ -379,7 +408,7 @@ export default function App() {
       setIsLoadingRenders(true);
       try {
         const response = await fetch(apiUrl("/api/v1/renders"), {
-          headers: authHeaders(token),
+          headers: authHeaders(token, activeWorkspaceSessionId),
         });
         let data: { items: RenderJobResponse[] } | ApiError | null = null;
         try {
@@ -419,17 +448,25 @@ export default function App() {
         setIsLoadingRenders(false);
       }
     },
-    [apiUrl, authHeaders, authToken, clearPreview, handleExpiredSession]
+    [
+      apiUrl,
+      authHeaders,
+      authToken,
+      clearPreview,
+      handleExpiredSession,
+      workspaceSessionId,
+    ]
   );
 
   const bootstrapAuthenticatedWorkspace = useCallback(
     async (
       accessToken: string,
       provider: AuthProviderMode,
-      refreshTokenValue: string | null = null
+      refreshTokenValue: string | null = null,
+      workspaceOverride?: string
     ) => {
       const attemptVerification = async (token: string) => {
-        const { response, data } = await fetchCurrentUser(token);
+        const { response, data } = await fetchCurrentUser(token, workspaceOverride);
         if (!response.ok || !data || !("email" in data)) {
           throw new Error(
             extractApiErrorMessage(
@@ -449,9 +486,9 @@ export default function App() {
         persistSession(verifiedToken, user, provider, verifiedRefreshToken);
         setAuthError(null);
         await Promise.all([
-          loadDatasets(verifiedToken),
-          loadBackgrounds(verifiedToken),
-          loadRenders(verifiedToken),
+          loadDatasets(verifiedToken, workspaceOverride),
+          loadBackgrounds(verifiedToken, workspaceOverride),
+          loadRenders(verifiedToken, workspaceOverride),
         ]);
         return;
       } catch (error) {
@@ -469,9 +506,9 @@ export default function App() {
       persistSession(verifiedToken, refreshedUser, provider, verifiedRefreshToken);
       setAuthError(null);
       await Promise.all([
-        loadDatasets(verifiedToken),
-        loadBackgrounds(verifiedToken),
-        loadRenders(verifiedToken),
+        loadDatasets(verifiedToken, workspaceOverride),
+        loadBackgrounds(verifiedToken, workspaceOverride),
+        loadRenders(verifiedToken, workspaceOverride),
       ]);
     },
     [
@@ -550,11 +587,17 @@ export default function App() {
       }
 
       setIsAuthChecking(true);
+      const activeWorkspaceSessionId =
+        workspaceSessionId ?? createWorkspaceSessionId();
+      if (!workspaceSessionId) {
+        persistWorkspaceSession(activeWorkspaceSessionId);
+      }
       try {
         await bootstrapAuthenticatedWorkspace(
           authToken,
           authProvider,
-          refreshToken
+          refreshToken,
+          activeWorkspaceSessionId
         );
       } catch (error) {
         if (!cancelled) {
@@ -576,8 +619,10 @@ export default function App() {
   }, [
     authToken,
     bootstrapAuthenticatedWorkspace,
+    persistWorkspaceSession,
     refreshToken,
     handleExpiredSession,
+    workspaceSessionId,
   ]);
 
   useEffect(() => {
@@ -596,7 +641,7 @@ export default function App() {
   }, [previewUrl]);
 
   useEffect(() => {
-    if (!authToken || !selectedRender) {
+    if (!authToken || !workspaceSessionId || !selectedRender) {
       if (!selectedRender) {
         clearPreview();
         setPreviewError(null);
@@ -618,6 +663,7 @@ export default function App() {
     selectedRender?.id,
     selectedRender?.status,
     selectedRender?.updated_at,
+    workspaceSessionId,
   ]);
 
   const hasPendingJobs = useMemo(
@@ -632,7 +678,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!authToken || !hasPendingJobs) {
+    if (!authToken || !workspaceSessionId || !hasPendingJobs) {
       return;
     }
 
@@ -644,7 +690,7 @@ export default function App() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [authToken, hasPendingJobs, loadDatasets, loadRenders]);
+  }, [authToken, hasPendingJobs, loadDatasets, loadRenders, workspaceSessionId]);
 
   const handleAuthenticate = async (
     mode: "login" | "signup",
@@ -655,6 +701,9 @@ export default function App() {
     setAuthError(null);
 
     try {
+      const nextWorkspaceSessionId = createWorkspaceSessionId();
+      persistWorkspaceSession(nextWorkspaceSessionId);
+
       if (isHostedAuth) {
         const session =
           mode === "login"
@@ -664,7 +713,8 @@ export default function App() {
         await bootstrapAuthenticatedWorkspace(
           session.accessToken,
           "supabase",
-          session.refreshToken
+          session.refreshToken,
+          nextWorkspaceSessionId
         );
       } else {
         const response = await fetch(apiUrl(`/api/v1/auth/${mode}`), {
@@ -690,12 +740,14 @@ export default function App() {
         persistSession(data.access_token, data.user, "local", null);
         setAuthError(null);
         await Promise.all([
-          loadDatasets(data.access_token),
-          loadBackgrounds(data.access_token),
-          loadRenders(data.access_token),
+          loadDatasets(data.access_token, nextWorkspaceSessionId),
+          loadBackgrounds(data.access_token, nextWorkspaceSessionId),
+          loadRenders(data.access_token, nextWorkspaceSessionId),
         ]);
       }
     } catch (error) {
+      clearStoredWorkspaceSessionId();
+      setWorkspaceSessionId(null);
       setAuthError(getErrorMessage(error, "Authentication failed."));
     } finally {
       setIsAuthenticating(false);
@@ -707,7 +759,7 @@ export default function App() {
     type: UploadType
   ) => {
     const file = event.target.files?.[0];
-    if (!file || !authToken) {
+    if (!file || !authToken || !workspaceSessionId) {
       return;
     }
 
@@ -760,7 +812,7 @@ export default function App() {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
-    if (!file || !authToken) {
+    if (!file || !authToken || !workspaceSessionId) {
       return;
     }
 
@@ -1163,7 +1215,36 @@ export default function App() {
     setPreviewError(null);
     setOptions(defaultOptions);
     clearPreview();
-    await Promise.all([loadDatasets(), loadBackgrounds(), loadRenders()]);
+
+    if (!authToken || !workspaceSessionId) {
+      await Promise.all([loadDatasets(), loadBackgrounds(), loadRenders()]);
+      return;
+    }
+
+    try {
+      await fetch(apiUrl("/api/v1/auth/logout"), {
+        method: "POST",
+        headers: authHeaders(),
+      });
+    } catch {
+      // Ignore workspace cleanup failures and still rotate the client workspace id.
+    }
+
+    const nextWorkspaceSessionId = createWorkspaceSessionId();
+    persistWorkspaceSession(nextWorkspaceSessionId);
+    setAvailableCounts(EMPTY_COUNTS);
+    setDatasets([]);
+    setBackgrounds(EMPTY_BACKGROUNDS);
+    setBackgroundLimit(DEFAULT_BACKGROUND_LIMIT);
+    setBackgroundCustomCount(0);
+    setRenderHistory([]);
+    setSelectedRenderId(null);
+
+    await Promise.all([
+      loadDatasets(authToken, nextWorkspaceSessionId),
+      loadBackgrounds(authToken, nextWorkspaceSessionId),
+      loadRenders(authToken, nextWorkspaceSessionId),
+    ]);
   };
 
   const resetAllFilters = () => {
@@ -1233,18 +1314,22 @@ export default function App() {
   };
 
   const handleLogout = useCallback(async () => {
-    if (authToken) {
+    if (authToken && workspaceSessionId) {
       try {
-        if (isHostedAuth) {
-          await logoutSupabaseSession(authToken);
-        } else {
-          await fetch(apiUrl("/api/v1/auth/logout"), {
-            method: "POST",
-            headers: authHeaders(),
-          });
-        }
+        await fetch(apiUrl("/api/v1/auth/logout"), {
+          method: "POST",
+          headers: authHeaders(),
+        });
       } catch {
-        // Ignore logout network failures and still clear local state.
+        // Ignore backend cleanup failures and still clear local state.
+      }
+    }
+
+    if (authToken && isHostedAuth) {
+      try {
+        await logoutSupabaseSession(authToken);
+      } catch {
+        // Ignore provider logout failures and still clear local state.
       }
     }
 
@@ -1255,7 +1340,14 @@ export default function App() {
     setUploadError(null);
     setRenderError(null);
     setPreviewError(null);
-  }, [apiUrl, authHeaders, authToken, clearAuthState, isHostedAuth]);
+  }, [
+    apiUrl,
+    authHeaders,
+    authToken,
+    clearAuthState,
+    isHostedAuth,
+    workspaceSessionId,
+  ]);
 
   const isCodingMode = assignmentMode === "coding";
   const userForAuth = useMemo(() => currentUser ?? readStoredAuthUser(), [currentUser]);

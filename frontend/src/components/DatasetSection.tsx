@@ -82,7 +82,7 @@ function DatasetGroup({
         <div className="dataset-empty">
           <p className="dataset-empty__title">No datasets yet</p>
           <p className="dataset-empty__text">
-            Upload a grid to add one to your personal dataset library.
+            Upload a grid to add it to the current signed-in workspace session.
           </p>
         </div>
       ) : (
@@ -304,19 +304,19 @@ export function DatasetSection({
       >
         <div className="library-metrics library-metrics--wide" role="group" aria-label="Dataset quotas">
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Alphabet quota</span>
+            <span className="metric-pill__label">Alphabet session quota</span>
             <strong className="metric-pill__value" aria-live="polite">
               {availableCounts.handwriting} / {availableCounts.handwritingLimit}
             </strong>
           </div>
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Coding quota</span>
+            <span className="metric-pill__label">Coding session quota</span>
             <strong className="metric-pill__value" aria-live="polite">
               {availableCounts.coding} / {availableCounts.codingLimit}
             </strong>
           </div>
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Custom background quota</span>
+            <span className="metric-pill__label">Background session quota</span>
             <strong className="metric-pill__value" aria-live="polite">
               {backgroundCustomCount} / {backgroundLimit}
             </strong>
@@ -336,7 +336,7 @@ export function DatasetSection({
               <div>
                 <h3 className="dataset-group__title">Upload handwriting datasets</h3>
                 <p className="dataset-group__helper">
-                  Upload alphabet and coding sheets first, then add one optional personal background below them.
+                  Upload alphabet and coding sheets for this session first, then add one optional background below them.
                 </p>
               </div>
             </div>

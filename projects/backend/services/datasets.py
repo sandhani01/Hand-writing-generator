@@ -1,57 +1,24 @@
 from __future__ import annotations
 
 import shutil
-import time
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import text
 
 from ..config import get_settings
-from ..database import connection_scope
 from ..models import DatasetRecord, User
-from .jobs import submit_dataset_job
-from .pipeline import extract_dataset
-from .storage import (
-    dataset_glyph_ref,
-    delete_ref,
-    materialize_file,
-    save_tree,
-    store_upload,
+from ..workspace import (
+    dataset_from_dict,
+    dataset_glyph_root,
+    dataset_to_dict,
+    load_workspace_manifest,
+    now_iso,
+    remove_path,
+    save_workspace_manifest,
+    store_uploaded_file,
 )
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _cleanup_temp_dir(path: Path) -> None:
-    for _ in range(3):
-        try:
-            shutil.rmtree(path)
-            return
-        except FileNotFoundError:
-            return
-        except PermissionError:
-            time.sleep(0.1)
-    shutil.rmtree(path, ignore_errors=True)
-
-
-def _row_to_dataset(row) -> DatasetRecord:
-    return DatasetRecord(
-        id=row["id"],
-        user_id=row["user_id"],
-        dataset_type=row["dataset_type"],
-        display_name=row["display_name"],
-        source_image_path=row["source_image_path"],
-        glyph_root=row["glyph_root"],
-        status=row["status"],
-        created_at=row["created_at"],
-        updated_at=row.get("updated_at"),
-        error_message=row.get("error_message"),
-    )
+from .pipeline import extract_dataset
 
 
 def dataset_limits() -> dict[str, int]:
@@ -62,94 +29,65 @@ def dataset_limits() -> dict[str, int]:
     }
 
 
-def list_user_datasets(user_id: str) -> list[DatasetRecord]:
-    with connection_scope() as connection:
-        rows = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, dataset_type, display_name, source_image_path,
-                           glyph_root, status, created_at, updated_at, error_message
-                    FROM datasets
-                    WHERE user_id = :user_id
-                    ORDER BY created_at DESC
-                    """
-                ),
-                {"user_id": user_id},
-            )
-            .mappings()
-            .all()
-        )
-
-    return [_row_to_dataset(row) for row in rows]
+def _sorted_datasets(items: list[DatasetRecord]) -> list[DatasetRecord]:
+    return sorted(items, key=lambda item: item.created_at, reverse=True)
 
 
-def get_dataset(user_id: str, dataset_id: str) -> DatasetRecord | None:
-    with connection_scope() as connection:
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, dataset_type, display_name, source_image_path,
-                           glyph_root, status, created_at, updated_at, error_message
-                    FROM datasets
-                    WHERE id = :dataset_id AND user_id = :user_id
-                    """
-                ),
-                {"dataset_id": dataset_id, "user_id": user_id},
-            )
-            .mappings()
-            .first()
-        )
-    return _row_to_dataset(row) if row else None
+def _list_from_manifest(manifest: dict) -> list[DatasetRecord]:
+    return _sorted_datasets(
+        [dataset_from_dict(item) for item in manifest.get("datasets", [])]
+    )
 
 
-def get_dataset_by_id(dataset_id: str) -> DatasetRecord | None:
-    with connection_scope() as connection:
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, dataset_type, display_name, source_image_path,
-                           glyph_root, status, created_at, updated_at, error_message
-                    FROM datasets
-                    WHERE id = :dataset_id
-                    """
-                ),
-                {"dataset_id": dataset_id},
-            )
-            .mappings()
-            .first()
-        )
-    return _row_to_dataset(row) if row else None
+def list_user_datasets(user_id: str, workspace_session_id: str) -> list[DatasetRecord]:
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+    return _list_from_manifest(manifest)
 
 
-def list_completed_datasets(user_id: str) -> list[DatasetRecord]:
-    return [dataset for dataset in list_user_datasets(user_id) if dataset.status == "completed"]
+def get_dataset(
+    user_id: str,
+    workspace_session_id: str,
+    dataset_id: str,
+) -> DatasetRecord | None:
+    for dataset in list_user_datasets(user_id, workspace_session_id):
+        if dataset.id == dataset_id:
+            return dataset
+    return None
 
 
-def _count_for_type(user_id: str, dataset_type: str) -> int:
-    with connection_scope() as connection:
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT COUNT(*) AS count
-                    FROM datasets
-                    WHERE user_id = :user_id AND dataset_type = :dataset_type
-                    """
-                ),
-                {"user_id": user_id, "dataset_type": dataset_type},
-            )
-            .mappings()
-            .first()
-        )
+def list_completed_datasets(
+    user_id: str,
+    workspace_session_id: str,
+) -> list[DatasetRecord]:
+    return [
+        dataset
+        for dataset in list_user_datasets(user_id, workspace_session_id)
+        if dataset.status == "completed"
+    ]
 
-    return int(row["count"])
+
+def _count_for_type(manifest: dict, dataset_type: str) -> int:
+    return sum(
+        1
+        for item in manifest.get("datasets", [])
+        if item.get("dataset_type") == dataset_type
+    )
+
+
+def _replace_dataset(manifest: dict, dataset: DatasetRecord) -> None:
+    items = manifest.get("datasets", [])
+    for index, item in enumerate(items):
+        if item.get("id") == dataset.id:
+            items[index] = dataset_to_dict(dataset)
+            manifest["datasets"] = items
+            return
+    items.insert(0, dataset_to_dict(dataset))
+    manifest["datasets"] = items
 
 
 def create_dataset_from_upload(
     user: User,
+    workspace_session_id: str,
     dataset_type: str,
     filename: str,
     content: bytes,
@@ -158,11 +96,12 @@ def create_dataset_from_upload(
     if dataset_type not in {"alphabet", "coding"}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="dataset_type must be 'alphabet' or 'coding'",
+            detail="dataset_type must be 'alphabet' or 'coding'.",
         )
 
+    manifest = load_workspace_manifest(user.id, workspace_session_id)
     limits = dataset_limits()
-    current_count = _count_for_type(user.id, dataset_type)
+    current_count = _count_for_type(manifest, dataset_type)
     if current_count >= limits[dataset_type]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -173,59 +112,64 @@ def create_dataset_from_upload(
         )
 
     dataset_id = str(uuid4())
-    created_at = _now_iso()
-    normalized_name = (display_name or Path(filename).stem or dataset_id).strip()
-    if not normalized_name:
-        normalized_name = dataset_id
-    source_ref = store_upload(user.id, dataset_type, dataset_id, filename, content)
-    glyph_root = dataset_glyph_ref(user.id, dataset_id)
+    created_at = now_iso()
+    normalized_name = (display_name or Path(filename).stem or dataset_id).strip() or dataset_id
+    source_path = store_uploaded_file(
+        user.id,
+        workspace_session_id,
+        dataset_type,
+        dataset_id,
+        filename,
+        content,
+    )
+    glyph_root = dataset_glyph_root(user.id, workspace_session_id, dataset_id)
 
-    with connection_scope() as connection:
-        connection.execute(
-            text(
-                """
-                INSERT INTO datasets (
-                    id, user_id, dataset_type, display_name, source_image_path,
-                    glyph_root, status, created_at, updated_at, error_message
-                )
-                VALUES (
-                    :id, :user_id, :dataset_type, :display_name, :source_image_path,
-                    :glyph_root, 'queued', :created_at, :updated_at, NULL
-                )
-                """
-            ),
-            {
-                "id": dataset_id,
-                "user_id": user.id,
-                "dataset_type": dataset_type,
-                "display_name": normalized_name,
-                "source_image_path": source_ref,
-                "glyph_root": glyph_root,
-                "created_at": created_at,
-                "updated_at": created_at,
-            },
+    dataset = DatasetRecord(
+        id=dataset_id,
+        user_id=user.id,
+        dataset_type=dataset_type,
+        display_name=normalized_name,
+        source_image_path=source_path,
+        glyph_root=glyph_root,
+        status="processing",
+        created_at=created_at,
+        updated_at=created_at,
+        error_message=None,
+    )
+    _replace_dataset(manifest, dataset)
+    save_workspace_manifest(user.id, workspace_session_id, manifest)
+
+    try:
+        glyph_root_path = Path(glyph_root)
+        if glyph_root_path.exists():
+            shutil.rmtree(glyph_root_path, ignore_errors=True)
+        glyph_root_path.mkdir(parents=True, exist_ok=True)
+
+        extract_dataset(
+            image_path=Path(source_path),
+            dataset_type=dataset.dataset_type,
+            output_folder=glyph_root_path,
         )
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, dataset_type, display_name, source_image_path,
-                           glyph_root, status, created_at, updated_at, error_message
-                    FROM datasets
-                    WHERE id = :dataset_id
-                    """
-                ),
-                {"dataset_id": dataset_id},
-            )
-            .mappings()
-            .first()
-        )
+        dataset.status = "completed"
+        dataset.error_message = None
+    except Exception as exc:  # pragma: no cover - runtime extraction failures
+        remove_path(glyph_root)
+        dataset.status = "failed"
+        dataset.error_message = str(exc)
 
-    submit_dataset_job(dataset_id)
-    return _row_to_dataset(row)
+    dataset.updated_at = now_iso()
+    manifest = load_workspace_manifest(user.id, workspace_session_id)
+    _replace_dataset(manifest, dataset)
+    save_workspace_manifest(user.id, workspace_session_id, manifest)
+    return dataset
 
 
-def rename_dataset(user_id: str, dataset_id: str, display_name: str) -> DatasetRecord:
+def rename_dataset(
+    user_id: str,
+    workspace_session_id: str,
+    dataset_id: str,
+    display_name: str,
+) -> DatasetRecord:
     normalized_name = display_name.strip()
     if not normalized_name:
         raise HTTPException(
@@ -233,151 +177,45 @@ def rename_dataset(user_id: str, dataset_id: str, display_name: str) -> DatasetR
             detail="Dataset name cannot be empty.",
         )
 
-    updated_at = _now_iso()
-    with connection_scope() as connection:
-        existing = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id
-                    FROM datasets
-                    WHERE id = :dataset_id AND user_id = :user_id
-                    """
-                ),
-                {"dataset_id": dataset_id, "user_id": user_id},
-            )
-            .mappings()
-            .first()
-        )
-        if existing is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Dataset not found.",
-            )
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+    for item in manifest.get("datasets", []):
+        if item.get("id") != dataset_id:
+            continue
+        item["display_name"] = normalized_name
+        item["updated_at"] = now_iso()
+        save_workspace_manifest(user_id, workspace_session_id, manifest)
+        return dataset_from_dict(item)
 
-        connection.execute(
-            text(
-                """
-                UPDATE datasets
-                SET display_name = :display_name,
-                    updated_at = :updated_at
-                WHERE id = :dataset_id AND user_id = :user_id
-                """
-            ),
-            {
-                "display_name": normalized_name,
-                "updated_at": updated_at,
-                "dataset_id": dataset_id,
-                "user_id": user_id,
-            },
-        )
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, dataset_type, display_name, source_image_path,
-                           glyph_root, status, created_at, updated_at, error_message
-                    FROM datasets
-                    WHERE id = :dataset_id AND user_id = :user_id
-                    """
-                ),
-                {"dataset_id": dataset_id, "user_id": user_id},
-            )
-            .mappings()
-            .first()
-        )
-
-    return _row_to_dataset(row)
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Dataset not found.",
+    )
 
 
-def delete_dataset(user_id: str, dataset_id: str) -> DatasetRecord:
-    with connection_scope() as connection:
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, dataset_type, display_name, source_image_path,
-                           glyph_root, status, created_at, updated_at, error_message
-                    FROM datasets
-                    WHERE id = :dataset_id AND user_id = :user_id
-                    """
-                ),
-                {"dataset_id": dataset_id, "user_id": user_id},
-            )
-            .mappings()
-            .first()
-        )
-        if row is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Dataset not found.",
-            )
-
-        dataset = _row_to_dataset(row)
-        connection.execute(
-            text("DELETE FROM datasets WHERE id = :dataset_id AND user_id = :user_id"),
-            {"dataset_id": dataset_id, "user_id": user_id},
-        )
-
-    delete_ref(dataset.source_image_path)
-    delete_ref(dataset.glyph_root)
-    return dataset
-
-
-def process_dataset_job(dataset_id: str) -> None:
-    dataset = get_dataset_by_id(dataset_id)
-    if dataset is None:
-        return
-
-    _update_dataset_status(dataset_id, "processing", error_message=None)
-
-    try:
-        with materialize_file(dataset.source_image_path) as source_path:
-            temp_dir = get_settings().temp_dir / f"dataset_job_{dataset_id}_{uuid4().hex[:8]}"
-            temp_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                output_dir = temp_dir / "glyphs"
-                extract_dataset(
-                    image_path=Path(source_path),
-                    dataset_type=dataset.dataset_type,
-                    output_folder=output_dir,
-                )
-
-                if get_dataset_by_id(dataset_id) is None:
-                    return
-
-                save_tree(output_dir, dataset.glyph_root)
-            finally:
-                _cleanup_temp_dir(temp_dir)
-
-        _update_dataset_status(dataset_id, "completed", error_message=None)
-    except Exception as exc:  # pragma: no cover - exercised in runtime failures
-        delete_ref(dataset.glyph_root)
-        _update_dataset_status(dataset_id, "failed", error_message=str(exc))
-
-
-def _update_dataset_status(
+def delete_dataset(
+    user_id: str,
+    workspace_session_id: str,
     dataset_id: str,
-    status_value: str,
-    *,
-    error_message: str | None,
-) -> None:
-    updated_at = _now_iso()
-    with connection_scope() as connection:
-        connection.execute(
-            text(
-                """
-                UPDATE datasets
-                SET status = :status,
-                    updated_at = :updated_at,
-                    error_message = :error_message
-                WHERE id = :dataset_id
-                """
-            ),
-            {
-                "status": status_value,
-                "updated_at": updated_at,
-                "error_message": error_message,
-                "dataset_id": dataset_id,
-            },
+) -> DatasetRecord:
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+    items = manifest.get("datasets", [])
+    kept_items: list[dict] = []
+    deleted: DatasetRecord | None = None
+
+    for item in items:
+        if item.get("id") == dataset_id:
+            deleted = dataset_from_dict(item)
+            continue
+        kept_items.append(item)
+
+    if deleted is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found.",
         )
+
+    manifest["datasets"] = kept_items
+    save_workspace_manifest(user_id, workspace_session_id, manifest)
+    remove_path(deleted.source_image_path)
+    remove_path(deleted.glyph_root)
+    return deleted

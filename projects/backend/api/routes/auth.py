@@ -3,14 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 
 from ...auth import (
-    get_current_access_token,
     get_current_user,
     login_local_user,
-    logout_access_token,
     signup_local_user,
 )
 from ...models import User
 from ...schemas import AuthRequest, AuthSessionResponse, StatusResponse, UserResponse
+from ...workspace import clear_workspace, get_workspace_session_id
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -39,8 +38,8 @@ def login(payload: AuthRequest) -> AuthSessionResponse:
 
 @router.post("/logout", response_model=StatusResponse)
 def logout(
-    access_token: str = Depends(get_current_access_token),
     current_user: User = Depends(get_current_user),
+    workspace_session_id: str = Depends(get_workspace_session_id),
 ) -> StatusResponse:
-    logout_access_token(access_token)
+    clear_workspace(current_user.id, workspace_session_id)
     return StatusResponse(status="logged_out")

@@ -4,6 +4,7 @@ const TOKEN_KEY = "handwritten-auth-token";
 const REFRESH_TOKEN_KEY = "handwritten-auth-refresh-token";
 const USER_KEY = "handwritten-auth-user";
 const PROVIDER_KEY = "handwritten-auth-provider";
+const WORKSPACE_SESSION_KEY = "handwritten-workspace-session";
 
 export function readStoredAuthToken(): string | null {
   return window.localStorage.getItem(TOKEN_KEY);
@@ -74,10 +75,22 @@ export function persistAuthUser(user: UserProfile): void {
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+export function readStoredWorkspaceSessionId(): string | null {
+  return window.localStorage.getItem(WORKSPACE_SESSION_KEY);
+}
+
+export function persistWorkspaceSessionId(workspaceSessionId: string): void {
+  window.localStorage.setItem(WORKSPACE_SESSION_KEY, workspaceSessionId);
+}
+
+export function clearStoredWorkspaceSessionId(): void {
+  window.localStorage.removeItem(WORKSPACE_SESSION_KEY);
+}
 
 export function clearStoredAuthSession(): void {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
   window.localStorage.removeItem(PROVIDER_KEY);
+  window.localStorage.removeItem(WORKSPACE_SESSION_KEY);
 }

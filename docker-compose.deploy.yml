@@ -1,0 +1,47 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+
+  api:
+    build:
+      context: ./projects
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ROLE: api
+      PORT: "8000"
+    env_file:
+      - ./projects/backend/.env
+    depends_on:
+      - redis
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: ./projects
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ROLE: worker
+    env_file:
+      - ./projects/backend/.env
+    depends_on:
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8000}
+        VITE_AUTH_PROVIDER: ${VITE_AUTH_PROVIDER:-supabase}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "5173:80"

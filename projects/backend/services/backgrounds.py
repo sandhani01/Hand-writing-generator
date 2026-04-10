@@ -5,24 +5,28 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import text
 
 from ..config import get_settings
-from ..database import connection_scope
 from ..models import BackgroundRecord, User
-from .storage import delete_ref, store_upload
-
-
-DEFAULT_BACKGROUND_ID = "default-ruled"
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+from ..workspace import (
+    DEFAULT_BACKGROUND_ID,
+    background_from_dict,
+    background_to_dict,
+    load_workspace_manifest,
+    now_iso,
+    remove_path,
+    save_workspace_manifest,
+    store_uploaded_file,
+)
 
 
 def _default_background_record(user_id: str, *, selected: bool) -> BackgroundRecord:
     settings = get_settings()
     background_path = settings.default_background_path.resolve()
+    timestamp = datetime.fromtimestamp(
+        background_path.stat().st_mtime if background_path.exists() else 0,
+        timezone.utc,
+    ).isoformat()
     return BackgroundRecord(
         id=DEFAULT_BACKGROUND_ID,
         user_id=user_id,
@@ -31,30 +35,9 @@ def _default_background_record(user_id: str, *, selected: bool) -> BackgroundRec
         status="completed",
         is_default=True,
         is_selected=selected,
-        created_at=datetime.fromtimestamp(
-            background_path.stat().st_mtime if background_path.exists() else 0,
-            timezone.utc,
-        ).isoformat(),
-        updated_at=datetime.fromtimestamp(
-            background_path.stat().st_mtime if background_path.exists() else 0,
-            timezone.utc,
-        ).isoformat(),
+        created_at=timestamp,
+        updated_at=timestamp,
         error_message=None,
-    )
-
-
-def _row_to_background(row) -> BackgroundRecord:
-    return BackgroundRecord(
-        id=row["id"],
-        user_id=row["user_id"],
-        display_name=row["display_name"],
-        source_image_path=row["source_image_path"],
-        status=row["status"],
-        is_default=False,
-        is_selected=bool(row["is_selected"]),
-        created_at=row["created_at"],
-        updated_at=row.get("updated_at"),
-        error_message=row.get("error_message"),
     )
 
 
@@ -62,42 +45,41 @@ def background_limit() -> int:
     return get_settings().max_backgrounds
 
 
-def list_user_backgrounds(user_id: str) -> list[BackgroundRecord]:
-    with connection_scope() as connection:
-        rows = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, display_name, source_image_path, status,
-                           is_selected, created_at, updated_at, error_message
-                    FROM backgrounds
-                    WHERE user_id = :user_id
-                    ORDER BY created_at DESC
-                    """
-                ),
-                {"user_id": user_id},
-            )
-            .mappings()
-            .all()
-        )
+def _custom_backgrounds_from_manifest(manifest: dict) -> list[BackgroundRecord]:
+    items = [background_from_dict(item) for item in manifest.get("backgrounds", [])]
+    return sorted(items, key=lambda item: item.created_at, reverse=True)
 
-    custom_items = [_row_to_background(row) for row in rows]
+
+def list_user_backgrounds(
+    user_id: str,
+    workspace_session_id: str,
+) -> list[BackgroundRecord]:
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+    custom_items = _custom_backgrounds_from_manifest(manifest)
     custom_selected = any(item.is_selected for item in custom_items)
-    default_item = _default_background_record(user_id, selected=not custom_selected)
-    return [default_item, *custom_items]
+    return [
+        _default_background_record(user_id, selected=not custom_selected),
+        *custom_items,
+    ]
 
 
-def list_custom_backgrounds(user_id: str) -> list[BackgroundRecord]:
-    return [item for item in list_user_backgrounds(user_id) if not item.is_default]
+def list_custom_backgrounds(
+    user_id: str,
+    workspace_session_id: str,
+) -> list[BackgroundRecord]:
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+    return _custom_backgrounds_from_manifest(manifest)
 
 
 def create_background_from_upload(
     user: User,
+    workspace_session_id: str,
     filename: str,
     content: bytes,
     display_name: str | None = None,
 ) -> BackgroundRecord:
-    existing = list_custom_backgrounds(user.id)
+    manifest = load_workspace_manifest(user.id, workspace_session_id)
+    existing = manifest.get("backgrounds", [])
     if len(existing) >= background_limit():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -105,155 +87,114 @@ def create_background_from_upload(
         )
 
     background_id = str(uuid4())
-    created_at = _now_iso()
-    normalized_name = (display_name or Path(filename).stem or background_id).strip()
-    if not normalized_name:
-        normalized_name = background_id
-
-    source_ref = store_upload(
+    created_at = now_iso()
+    normalized_name = (display_name or Path(filename).stem or background_id).strip() or background_id
+    source_path = store_uploaded_file(
         user.id,
+        workspace_session_id,
         "background",
         background_id,
         filename,
         content,
     )
 
-    with connection_scope() as connection:
-        connection.execute(
-            text("UPDATE backgrounds SET is_selected = 0 WHERE user_id = :user_id"),
-            {"user_id": user.id},
-        )
-        connection.execute(
-            text(
-                """
-                INSERT INTO backgrounds (
-                    id, user_id, display_name, source_image_path, status,
-                    is_selected, created_at, updated_at, error_message
-                )
-                VALUES (
-                    :id, :user_id, :display_name, :source_image_path, 'completed',
-                    1, :created_at, :updated_at, NULL
-                )
-                """
-            ),
-            {
-                "id": background_id,
-                "user_id": user.id,
-                "display_name": normalized_name,
-                "source_image_path": source_ref,
-                "created_at": created_at,
-                "updated_at": created_at,
-            },
-        )
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, display_name, source_image_path, status,
-                           is_selected, created_at, updated_at, error_message
-                    FROM backgrounds
-                    WHERE id = :background_id
-                    """
-                ),
-                {"background_id": background_id},
-            )
-            .mappings()
-            .first()
+    items: list[dict] = []
+    for item in existing:
+        item = dict(item)
+        item["is_selected"] = False
+        items.append(item)
+
+    background = BackgroundRecord(
+        id=background_id,
+        user_id=user.id,
+        display_name=normalized_name,
+        source_image_path=source_path,
+        status="completed",
+        is_default=False,
+        is_selected=True,
+        created_at=created_at,
+        updated_at=created_at,
+        error_message=None,
+    )
+    items.insert(0, background_to_dict(background))
+    manifest["backgrounds"] = items
+    manifest["selected_background_id"] = background_id
+    save_workspace_manifest(user.id, workspace_session_id, manifest)
+    return background
+
+
+def select_background(
+    user_id: str,
+    workspace_session_id: str,
+    background_id: str,
+) -> list[BackgroundRecord]:
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+
+    if background_id != DEFAULT_BACKGROUND_ID and not any(
+        item.get("id") == background_id for item in manifest.get("backgrounds", [])
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Background not found.",
         )
 
-    return _row_to_background(row)
+    updated_at = now_iso()
+    items: list[dict] = []
+    for item in manifest.get("backgrounds", []):
+        item = dict(item)
+        item["is_selected"] = background_id != DEFAULT_BACKGROUND_ID and item.get("id") == background_id
+        item["updated_at"] = updated_at
+        items.append(item)
+
+    manifest["backgrounds"] = items
+    manifest["selected_background_id"] = background_id
+    save_workspace_manifest(user_id, workspace_session_id, manifest)
+    return list_user_backgrounds(user_id, workspace_session_id)
 
 
-def select_background(user_id: str, background_id: str) -> list[BackgroundRecord]:
-    with connection_scope() as connection:
-        if background_id == DEFAULT_BACKGROUND_ID:
-            connection.execute(
-                text("UPDATE backgrounds SET is_selected = 0 WHERE user_id = :user_id"),
-                {"user_id": user_id},
-            )
-        else:
-            existing = (
-                connection.execute(
-                    text(
-                        """
-                        SELECT id
-                        FROM backgrounds
-                        WHERE id = :background_id AND user_id = :user_id
-                        """
-                    ),
-                    {"background_id": background_id, "user_id": user_id},
-                )
-                .mappings()
-                .first()
-            )
-            if existing is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Background not found.",
-                )
-
-            connection.execute(
-                text(
-                    """
-                    UPDATE backgrounds
-                    SET is_selected = CASE WHEN id = :background_id THEN 1 ELSE 0 END,
-                        updated_at = :updated_at
-                    WHERE user_id = :user_id
-                    """
-                ),
-                {
-                    "background_id": background_id,
-                    "user_id": user_id,
-                    "updated_at": _now_iso(),
-                },
-            )
-
-    return list_user_backgrounds(user_id)
-
-
-def delete_background(user_id: str, background_id: str) -> BackgroundRecord:
+def delete_background(
+    user_id: str,
+    workspace_session_id: str,
+    background_id: str,
+) -> BackgroundRecord:
     if background_id == DEFAULT_BACKGROUND_ID:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The default background cannot be deleted.",
         )
 
-    with connection_scope() as connection:
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT id, user_id, display_name, source_image_path, status,
-                           is_selected, created_at, updated_at, error_message
-                    FROM backgrounds
-                    WHERE id = :background_id AND user_id = :user_id
-                    """
-                ),
-                {"background_id": background_id, "user_id": user_id},
-            )
-            .mappings()
-            .first()
-        )
-        if row is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Background not found.",
-            )
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+    kept_items: list[dict] = []
+    deleted: BackgroundRecord | None = None
 
-        background = _row_to_background(row)
-        connection.execute(
-            text(
-                "DELETE FROM backgrounds WHERE id = :background_id AND user_id = :user_id"
-            ),
-            {"background_id": background_id, "user_id": user_id},
+    for item in manifest.get("backgrounds", []):
+        if item.get("id") == background_id:
+            deleted = background_from_dict(item)
+            continue
+        kept_items.append(item)
+
+    if deleted is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Background not found.",
         )
 
-    delete_ref(background.source_image_path)
-    return background
+    manifest["backgrounds"] = kept_items
+    if manifest.get("selected_background_id") == background_id:
+        manifest["selected_background_id"] = DEFAULT_BACKGROUND_ID
+        for item in manifest["backgrounds"]:
+            item["is_selected"] = False
+
+    save_workspace_manifest(user_id, workspace_session_id, manifest)
+    remove_path(deleted.source_image_path)
+    return deleted
 
 
-def get_selected_background(user_id: str) -> BackgroundRecord:
-    items = list_user_backgrounds(user_id)
+def get_selected_background(
+    user_id: str,
+    workspace_session_id: str,
+) -> BackgroundRecord:
+    items = list_user_backgrounds(user_id, workspace_session_id)
     for item in items:
         if item.is_selected:
             return item

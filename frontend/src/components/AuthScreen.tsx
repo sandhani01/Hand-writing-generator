@@ -41,8 +41,8 @@ export function AuthScreen({
   const subtitle = useMemo(
     () =>
       mode === "login"
-        ? "Your datasets, renders, and tuning history live behind your account now."
-        : "Create an account to keep your alphabet, coding, and background datasets in one place.",
+        ? "Sign in, upload your sheets for this session, and render pages without permanent dataset storage."
+        : "Create an account, then upload your alphabet, coding, and background sheets each time you start a new workspace.",
     [mode]
   );
 
@@ -72,8 +72,8 @@ export function AuthScreen({
             <p className="auth-panel__lede">{subtitle}</p>
             <p className="auth-panel__meta">
               {providerMode === "supabase"
-                ? `${providerLabel}. Sign in here, then the backend uses your bearer token for datasets and renders.`
-                : `${providerLabel}. This mode is useful for local development before hosted auth is configured.`}
+                ? `${providerLabel}. Sign in here, then the backend verifies your bearer token and keeps uploaded assets only for the current workspace session.`
+                : `${providerLabel}. This mode is still available for local development, but the hosted flow is designed around Supabase login.`}
             </p>
           </div>
 
