@@ -340,8 +340,16 @@ export function DatasetSection({
             <div className="dataset-upload-stack">
               <div className="upload-grid">
                 <label className="upload-tile">
-                  <span className="upload-tile__title">Upload alphabet dataset (8x8)</span>
-                   
+                  <div className="upload-tile__header">
+                    <span className="upload-tile__icon" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </span>
+                    <span className="upload-tile__title">Alphabet Dataset (8x8)</span>
+                  </div>
+                  <span className="upload-tile__hint">A-Z, a-z, 0-9, comma, period</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -351,8 +359,16 @@ export function DatasetSection({
                   />
                 </label>
                 <label className="upload-tile">
-                  <span className="upload-tile__title">Upload coding dataset (6x5)</span>
-                  
+                  <div className="upload-tile__header">
+                    <span className="upload-tile__icon upload-tile__icon--coding" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                      </svg>
+                    </span>
+                    <span className="upload-tile__title">Coding Dataset (6x5)</span>
+                  </div>
+                  <span className="upload-tile__hint">Special characters and symbols</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -365,9 +381,18 @@ export function DatasetSection({
 
               <div className="upload-grid upload-grid--single">
                 <label className="upload-tile">
-                  <span className="upload-tile__title">Upload background dataset</span>
+                  <div className="upload-tile__header">
+                    <span className="upload-tile__icon upload-tile__icon--bg" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                        <circle cx="9" cy="9" r="2" />
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                      </svg>
+                    </span>
+                    <span className="upload-tile__title">Custom Background</span>
+                  </div>
                   <span className="upload-tile__hint">
-                    Upload Your Background Custom here !
+                    Upload a custom page background image (optional)
                   </span>
                   <input
                     type="file"
