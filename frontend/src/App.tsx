@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   clearStoredAssignmentMode,
   persistAssignmentMode,
@@ -87,6 +87,53 @@ function createWorkspaceSessionId() {
   return `ws-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
 }
 
+const DEFAULTS_FETCH_TIMEOUT_MS = 8000;
+const WORKSPACE_VERIFY_TIMEOUT_MS = 12000;
+const WORKSPACE_ASSET_TIMEOUT_MS = 12000;
+const WORKSPACE_BOOT_SOFT_RELEASE_MS = 3500;
+const REQUEST_TIMEOUT_MESSAGE = "The server took too long to respond.";
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function isRecoverableWorkspaceBootError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    error.message === REQUEST_TIMEOUT_MESSAGE ||
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("load failed")
+  );
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = WORKSPACE_ASSET_TIMEOUT_MS
+) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(REQUEST_TIMEOUT_MESSAGE);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export default function App() {
   const apiBase =
     ((import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env
@@ -151,6 +198,7 @@ export default function App() {
   const [busyBackgroundId, setBusyBackgroundId] = useState<string | null>(null);
   const [busyRenderId, setBusyRenderId] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
+  const workspaceBootKeyRef = useRef<string | null>(null);
 
   const selectedRender = useMemo(
     () => renderHistory.find((item) => item.id === selectedRenderId) ?? null,
@@ -245,9 +293,13 @@ export default function App() {
 
   const fetchCurrentUser = useCallback(
     async (token: string, workspaceOverride?: string) => {
-      const response = await fetch(apiUrl("/api/v1/me"), {
-        headers: authHeaders(token, workspaceOverride),
-      });
+      const response = await fetchWithTimeout(
+        apiUrl("/api/v1/me"),
+        {
+          headers: authHeaders(token, workspaceOverride),
+        },
+        WORKSPACE_VERIFY_TIMEOUT_MS
+      );
       let data: UserProfile | ApiError | null = null;
       try {
         data = (await response.json()) as UserProfile | ApiError;
@@ -273,7 +325,11 @@ export default function App() {
 
   const loadRendererDefaults = useCallback(async () => {
     try {
-      const response = await fetch(apiUrl("/api/v1/defaults"));
+      const response = await fetchWithTimeout(
+        apiUrl("/api/v1/defaults"),
+        {},
+        DEFAULTS_FETCH_TIMEOUT_MS
+      );
       const data: DefaultsResponse = await response.json();
       if (!response.ok || !data.options) {
         throw new Error("Could not load renderer defaults");
@@ -302,9 +358,13 @@ export default function App() {
 
       setIsLoadingDatasets(true);
       try {
-        const response = await fetch(apiUrl("/api/v1/datasets"), {
-          headers: authHeaders(token, activeWorkspaceSessionId),
-        });
+        const response = await fetchWithTimeout(
+          apiUrl("/api/v1/datasets"),
+          {
+            headers: authHeaders(token, activeWorkspaceSessionId),
+          },
+          WORKSPACE_ASSET_TIMEOUT_MS
+        );
         let data: DatasetListResponse | ApiError | null = null;
         try {
           data = (await response.json()) as DatasetListResponse | ApiError;
@@ -358,9 +418,13 @@ export default function App() {
       }
 
       try {
-        const response = await fetch(apiUrl("/api/v1/backgrounds"), {
-          headers: authHeaders(token, activeWorkspaceSessionId),
-        });
+        const response = await fetchWithTimeout(
+          apiUrl("/api/v1/backgrounds"),
+          {
+            headers: authHeaders(token, activeWorkspaceSessionId),
+          },
+          WORKSPACE_ASSET_TIMEOUT_MS
+        );
         let data: BackgroundListResponse | ApiError | null = null;
         try {
           data = (await response.json()) as BackgroundListResponse | ApiError;
@@ -408,9 +472,13 @@ export default function App() {
 
       setIsLoadingRenders(true);
       try {
-        const response = await fetch(apiUrl("/api/v1/renders"), {
-          headers: authHeaders(token, activeWorkspaceSessionId),
-        });
+        const response = await fetchWithTimeout(
+          apiUrl("/api/v1/renders"),
+          {
+            headers: authHeaders(token, activeWorkspaceSessionId),
+          },
+          WORKSPACE_ASSET_TIMEOUT_MS
+        );
         let data: { items: RenderJobResponse[] } | ApiError | null = null;
         try {
           data = (await response.json()) as { items: RenderJobResponse[] } | ApiError;
@@ -486,7 +554,7 @@ export default function App() {
         const user = await attemptVerification(verifiedToken);
         persistSession(verifiedToken, user, provider, verifiedRefreshToken);
         setAuthError(null);
-        await Promise.all([
+        void Promise.allSettled([
           loadDatasets(verifiedToken, workspaceOverride),
           loadBackgrounds(verifiedToken, workspaceOverride),
           loadRenders(verifiedToken, workspaceOverride),
@@ -506,7 +574,7 @@ export default function App() {
       const refreshedUser = await attemptVerification(verifiedToken);
       persistSession(verifiedToken, refreshedUser, provider, verifiedRefreshToken);
       setAuthError(null);
-      await Promise.all([
+      void Promise.allSettled([
         loadDatasets(verifiedToken, workspaceOverride),
         loadBackgrounds(verifiedToken, workspaceOverride),
         loadRenders(verifiedToken, workspaceOverride),
@@ -577,9 +645,11 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    let releaseLoaderId: number | null = null;
 
     const verifySession = async () => {
       if (!authToken) {
+        workspaceBootKeyRef.current = null;
         if (!cancelled) {
           setIsAuthChecking(false);
           setAvailableCounts(EMPTY_COUNTS);
@@ -593,6 +663,29 @@ export default function App() {
       if (!workspaceSessionId) {
         persistWorkspaceSession(activeWorkspaceSessionId);
       }
+      const workspaceBootKey = [
+        authToken,
+        refreshToken ?? "",
+        activeWorkspaceSessionId,
+      ].join(":");
+
+      if (workspaceBootKeyRef.current === workspaceBootKey) {
+        if (!cancelled) {
+          setIsAuthChecking(false);
+        }
+        return;
+      }
+
+      workspaceBootKeyRef.current = workspaceBootKey;
+
+      if (currentUser) {
+        releaseLoaderId = window.setTimeout(() => {
+          if (!cancelled) {
+            setIsAuthChecking(false);
+          }
+        }, WORKSPACE_BOOT_SOFT_RELEASE_MS);
+      }
+
       try {
         await bootstrapAuthenticatedWorkspace(
           authToken,
@@ -602,11 +695,24 @@ export default function App() {
         );
       } catch (error) {
         if (!cancelled) {
+          if (currentUser && isRecoverableWorkspaceBootError(error)) {
+            void Promise.allSettled([
+              loadDatasets(authToken, activeWorkspaceSessionId),
+              loadBackgrounds(authToken, activeWorkspaceSessionId),
+              loadRenders(authToken, activeWorkspaceSessionId),
+            ]);
+            return;
+          }
+
+          workspaceBootKeyRef.current = null;
           handleExpiredSession(
             getErrorMessage(error, "Could not verify your saved session.")
           );
         }
       } finally {
+        if (releaseLoaderId !== null) {
+          window.clearTimeout(releaseLoaderId);
+        }
         if (!cancelled) {
           setIsAuthChecking(false);
         }
@@ -620,6 +726,9 @@ export default function App() {
   }, [
     authToken,
     bootstrapAuthenticatedWorkspace,
+    loadBackgrounds,
+    loadDatasets,
+    loadRenders,
     persistWorkspaceSession,
     refreshToken,
     handleExpiredSession,
@@ -1365,7 +1474,7 @@ export default function App() {
       : "The backend is still processing this render."
     : "Render a page to start your history.";
 
-  if (isAuthChecking) {
+  if (isAuthChecking && !currentUser) {
     return (
       <div className="app app--gate">
         <div className="gate-topbar">
