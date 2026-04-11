@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 
 type Props = {
@@ -10,12 +10,40 @@ type Props = {
 type DemoSlide = {
   step: string;
   title: string;
-  tone: "Create Datasets" | "Crop Dataset" | "Upload Datasets" | "Compose and Render" | "export";
+  tone: string;
   imagePath: string;
   imageAlt: string;
   description: string;
   tips: string[];
 };
+
+const DEMO_THEME_STYLES = [
+  {
+    "--demo-accent": "#24b7aa",
+    "--demo-accent-soft": "rgba(36, 183, 170, 0.14)",
+    "--demo-accent-strong": "#7be3d9",
+  },
+  {
+    "--demo-accent": "#d8902f",
+    "--demo-accent-soft": "rgba(216, 144, 47, 0.14)",
+    "--demo-accent-strong": "#f1c980",
+  },
+  {
+    "--demo-accent": "#4f8cff",
+    "--demo-accent-soft": "rgba(79, 140, 255, 0.14)",
+    "--demo-accent-strong": "#a9c7ff",
+  },
+  {
+    "--demo-accent": "#dd6f9e",
+    "--demo-accent-soft": "rgba(221, 111, 158, 0.14)",
+    "--demo-accent-strong": "#f2abc8",
+  },
+  {
+    "--demo-accent": "#8d78f6",
+    "--demo-accent-soft": "rgba(141, 120, 246, 0.14)",
+    "--demo-accent-strong": "#c8bcff",
+  },
+] as const;
 
 const DEMO_SLIDES: DemoSlide[] = [
   {
@@ -25,11 +53,11 @@ const DEMO_SLIDES: DemoSlide[] = [
     imagePath: "/demo/01-Create Datasets.png",
     imageAlt: "Create Datasets section demo screenshot",
     description:
-      "Start by pasting text or code into Create Datasets. Empty lines are preserved so the Compose and Render matches your intended page layout.",
+      "Write this on your Book first !",
     tips: [
-      "Use this area for the final text you want rendered.",
-      "Blank lines stay blank in the output page.",
-      "Render page lives at the top right for quick access.",
+      "Write exactly as shown in image for better Extraction of your hand-writing",
+      "Write on a neat paper",
+      "Give spaces , Like shown in image",
     ],
   },
   {
@@ -39,9 +67,9 @@ const DEMO_SLIDES: DemoSlide[] = [
     imagePath: "/demo/02-Crop Dataset.png",
     imageAlt: "Crop Dataset section demo screenshot",
     description:
-      "Adjust realism and handwriting behavior with quick presets first, then refine spacing, scale, jitter, or exact character overrides.",
+      "Crop the images (Easy-Peasy)",
     tips: [
-      "Use presets for a fast starting point.",
+      "Use edit in your photos for crop(mobile)",
       "Open advanced controls when you need deeper styling.",
       "Character fixes let you move or resize one glyph without changing the whole style.",
     ],
@@ -53,10 +81,10 @@ const DEMO_SLIDES: DemoSlide[] = [
     imagePath: "/demo/03-Upload Datasets.png",
     imageAlt: "Datasets section demo screenshot",
     description:
-      "Upload alphabet sheets, coding symbol sheets, and one background. The renderer uses these Upload Datasets to build your handwriting output.",
+      "Upload alphabet sheets, coding symbol sheets, and one background(Optional).",
     tips: [
-      "Simple mode uses alphabet datasets.",
-      "Coding mode uses both alphabet and coding datasets.",
+      "Simple mode: Only alphabet datasets needed.",
+      "Coding mode: Both alphabet and coding datasets needed.",
       "Background datasets control the paper look behind the writing.",
     ],
   },
@@ -67,11 +95,9 @@ const DEMO_SLIDES: DemoSlide[] = [
     imagePath: "/demo/04-Compose and Render.png",
     imageAlt: "Compose and Render section demo screenshot",
     description:
-      "Compose and Render shows the latest rendered page and keeps a short recent history so you can compare outputs without losing momentum.",
+      "Just insert the text you want in compose and Render !!",
     tips: [
-      "Select older renders from history to compare versions.",
-      "Compose and Render updates after each completed render.",
-      "Use this area to check spacing, realism, and page balance before exporting.",
+     
     ],
   },
   {
@@ -95,6 +121,10 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   const activeSlide = DEMO_SLIDES[activeIndex];
+  const activeThemeStyle = useMemo(
+    () => DEMO_THEME_STYLES[activeIndex % DEMO_THEME_STYLES.length] as CSSProperties,
+    [activeIndex]
+  );
   const progressLabel = useMemo(
     () => `${activeIndex + 1} / ${DEMO_SLIDES.length}`,
     [activeIndex]
@@ -129,15 +159,9 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
       </div>
 
       <main id="demo-tour" className="demo-tour" aria-labelledby="demo-tour-title">
-        <section className={`demo-hero demo-hero--${activeSlide.tone}`}>
-          <p className="demo-hero__eyebrow">Interactive Product Tour</p>
-          <h1 id="demo-tour-title" className="demo-hero__title">
-            Learn the full workflow before you start rendering
-          </h1>
-          
-        </section>
+       
 
-        <section className={`demo-stage demo-stage--${activeSlide.tone}`}>
+        <section className="demo-stage" style={activeThemeStyle}>
           <div className="demo-stage__top">
             <div className="demo-stage__meta">
               <span className="demo-stage__step">{activeSlide.step}</span>
@@ -208,22 +232,24 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
             ))}
           </div>
 
-          <div className={`demo-details demo-details--${activeSlide.tone}`}>
+          <div className="demo-details">
             <div className="demo-details__summary">
               <span className="demo-details__badge">{activeSlide.step}</span>
               <p className="demo-details__text">{activeSlide.description}</p>
             </div>
 
-            <div className="demo-details__tips">
-              {activeSlide.tips.map((tip) => (
-                <article key={tip} className="demo-tip">
-                  <span className="demo-tip__marker" aria-hidden>
-                    {activeSlide.step}
-                  </span>
-                  <p className="demo-tip__text">{tip}</p>
-                </article>
-              ))}
-            </div>
+            {activeSlide.tips.length ? (
+              <div className="demo-details__tips">
+                {activeSlide.tips.map((tip) => (
+                  <article key={tip} className="demo-tip">
+                    <span className="demo-tip__marker" aria-hidden>
+                      {activeSlide.step}
+                    </span>
+                    <p className="demo-tip__text">{tip}</p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </div>
         </section>
       </main>

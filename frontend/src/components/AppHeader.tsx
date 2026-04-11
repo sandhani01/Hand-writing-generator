@@ -38,7 +38,7 @@ export function AppHeader({
           </span>
         </div>
         <p className="app-header__lede" id="app-page-desc">
-          Upload your handwriting datasets, compose your text, tune the style, and download your rendered page.
+          Upload - Render - Download Assignment
         </p>
       </div>
       <nav className="app-header__toolbar" aria-label="Workspace actions">

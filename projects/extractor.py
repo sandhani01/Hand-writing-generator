@@ -339,8 +339,31 @@ def apply_post_threshold_cleanup(binary, skip_open=False):
     return cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
 
 
+def normalize_input_for_extraction(image):
+    if image.ndim == 2:
+        gray = image.copy()
+    else:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Flatten lighting and paper tint so phone photos behave more like a scan.
+    softened = cv2.GaussianBlur(gray, (3, 3), 0)
+    background = cv2.GaussianBlur(softened, (0, 0), sigmaX=27, sigmaY=27)
+    background = np.maximum(background, 1)
+    flattened = cv2.divide(softened, background, scale=255)
+
+    # Keep this gentle so already-clean uploads do not get overprocessed.
+    lifted = cv2.addWeighted(
+        flattened,
+        0.84,
+        np.full_like(flattened, 255),
+        0.16,
+        -10,
+    )
+    return cv2.GaussianBlur(lifted, (3, 3), 0)
+
+
 def preprocess_image(image, skip_open=False, mode="adaptive"):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = normalize_input_for_extraction(image)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
     if mode == "otsu":

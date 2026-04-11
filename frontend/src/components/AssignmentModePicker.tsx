@@ -84,8 +84,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
             What are you writing today?
           </h1>
           <p id="mode-picker-desc" className="mode-picker__lede">
-            Choose your assignment type. This determines which glyph sets are available.
-            You can change it anytime.
+            Choose your assignment type 
           </p>
         </header>
 
@@ -151,7 +150,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
             <div className="mode-example" aria-label="Example alphabet grid preview">
               <div className="mode-example__head">
                 <div className="mode-example__title">
-                  EXAMPLE GRID LAYOUT (ALPHABETS)
+                  DRAW THIS BEFOR YOU START(ALPHABETS)
                 </div>
                 <button
                   type="button"
@@ -215,7 +214,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
             <div className="mode-example" aria-label="Example coding symbols preview">
               <div className="mode-example__head">
                 <div className="mode-example__title">
-                  EXAMPLE GRID LAYOUT (SYMBOLS)
+                  DRAW THIS BEFOR YOU START(SYMBOLS)
                 </div>
                 <button
                   type="button"
