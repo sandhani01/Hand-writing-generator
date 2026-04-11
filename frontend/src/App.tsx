@@ -19,6 +19,7 @@ import { AppHeader } from "./components/AppHeader";
 import { AssignmentGate } from "./components/AssignmentGate";
 import { ComposeSection } from "./components/ComposeSection";
 import { DatasetSection } from "./components/DatasetSection";
+import { DemoTour } from "./components/DemoTour";
 import { PreviewSection } from "./components/PreviewSection";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { TuningSection } from "./components/TuningSection";
@@ -182,6 +183,7 @@ export default function App() {
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode | null>(
     () => readStoredAssignmentMode()
   );
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [isLoadingDatasets, setIsLoadingDatasets] = useState(false);
@@ -1413,12 +1415,14 @@ export default function App() {
   };
 
   const selectAssignmentMode = (mode: AssignmentMode) => {
+    setIsDemoOpen(false);
     setAssignmentMode(mode);
     setText(mode === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE);
     persistAssignmentMode(mode);
   };
 
   const openAssignmentPicker = () => {
+    setIsDemoOpen(false);
     setAssignmentMode(null);
     clearStoredAssignmentMode();
   };
@@ -1445,6 +1449,7 @@ export default function App() {
 
     clearAuthState();
     setAuthError(null);
+    setIsDemoOpen(false);
     setAssignmentMode(null);
     clearStoredAssignmentMode();
     setUploadError(null);
@@ -1562,11 +1567,22 @@ export default function App() {
   }
 
   if (assignmentMode === null) {
+    if (isDemoOpen) {
+      return (
+        <DemoTour
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onBack={() => setIsDemoOpen(false)}
+        />
+      );
+    }
+
     return (
       <AssignmentGate
         theme={theme}
         onToggleTheme={toggleTheme}
         onSelectMode={selectAssignmentMode}
+        onOpenDemo={() => setIsDemoOpen(true)}
       />
     );
   }

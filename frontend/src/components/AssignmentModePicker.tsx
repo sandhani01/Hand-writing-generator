@@ -3,6 +3,7 @@ import type { AssignmentMode } from "../types";
 
 type Props = {
   onSelect: (mode: AssignmentMode) => void;
+  onOpenDemo: () => void;
 };
 
 const ALPHABET_GRID_8X8: string[][] = [
@@ -49,16 +50,32 @@ const CODING_SYMBOLS_6X5: string[] = [
   "",
 ];
 
-export function AssignmentModePicker({ onSelect }: Props) {
+export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
   const [showRealAlphabet, setShowRealAlphabet] = useState(true);
   const [showRealCoding, setShowRealCoding] = useState(true);
 
   return (
-    <div id="assignment-picker" className="mode-picker" role="dialog" aria-modal="true" aria-labelledby="mode-picker-title" aria-describedby="mode-picker-desc">
+    <div
+      id="assignment-picker"
+      className="mode-picker"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mode-picker-title"
+      aria-describedby="mode-picker-desc"
+    >
       <div className="mode-picker__inner">
         <header className="mode-picker__header">
           <div className="mode-picker__icon" aria-hidden="true">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
@@ -67,45 +84,65 @@ export function AssignmentModePicker({ onSelect }: Props) {
             What are you writing today?
           </h1>
           <p id="mode-picker-desc" className="mode-picker__lede">
-            Choose your assignment type. This determines which glyph sets are available. You can change it anytime.
+            Choose your assignment type. This determines which glyph sets are available.
+            You can change it anytime.
           </p>
         </header>
 
         <section className="mode-picker__instructions" aria-label="Mode instructions">
-          <div className="mode-instructions" role="group" aria-label="Simple vs coding mode">
+          <div
+            className="mode-instructions mode-instructions--triad"
+            role="group"
+            aria-label="Simple, demo, and coding modes"
+          >
             <button
               type="button"
               className="mode-instructions__item mode-instructions__item--simple"
               onClick={() => onSelect("simple")}
             >
-              <div className="mode-instructions__icon mode-instructions__icon--simple" aria-hidden>
+              <div
+                className="mode-instructions__icon mode-instructions__icon--simple"
+                aria-hidden
+              >
                 Aa
               </div>
               <div className="mode-instructions__text">
                 <div className="mode-instructions__name">Simple assignments</div>
-                <div className="mode-instructions__detail">
-                  Essays, notes, and everyday text. Uses your alphabet datasets only.
-                </div>
+             
               </div>
             </button>
 
-            <div className="mode-instructions__arrow" aria-hidden>
-              →
-            </div>
+            <button
+              type="button"
+              className="mode-instructions__item mode-instructions__item--demo"
+              onClick={onOpenDemo}
+            >
+              <div
+                className="mode-instructions__icon mode-instructions__icon--demo"
+                aria-hidden
+              >
+                Demo
+              </div>
+              <div className="mode-instructions__text">
+                <div className="mode-instructions__name">Demo tour</div>
+               
+              </div>
+            </button>
 
             <button
               type="button"
               className="mode-instructions__item mode-instructions__item--coding"
               onClick={() => onSelect("coding")}
             >
-              <div className="mode-instructions__icon mode-instructions__icon--coding" aria-hidden>
+              <div
+                className="mode-instructions__icon mode-instructions__icon--coding"
+                aria-hidden
+              >
                 {"</" + ">"}
               </div>
               <div className="mode-instructions__text">
                 <div className="mode-instructions__name">Coding assignments</div>
-                <div className="mode-instructions__detail">
-                  Code and symbols. Uses your alphabet and coding datasets.
-                </div>
+                
               </div>
             </button>
           </div>
@@ -119,13 +156,13 @@ export function AssignmentModePicker({ onSelect }: Props) {
                 <button
                   type="button"
                   className="mode-example__toggle"
-                  onClick={() => setShowRealAlphabet((v) => !v)}
+                  onClick={() => setShowRealAlphabet((value) => !value)}
                 >
                   {showRealAlphabet ? "Show Digital" : "Show Real"}
                 </button>
               </div>
 
-              <div className="mode-example__subtitle">alphabets grid 8×8</div>
+              <div className="mode-example__subtitle">alphabets grid 8x8</div>
 
               <div
                 className="mode-flip mode-flip--alphabet"
@@ -183,13 +220,13 @@ export function AssignmentModePicker({ onSelect }: Props) {
                 <button
                   type="button"
                   className="mode-example__toggle"
-                  onClick={() => setShowRealCoding((v) => !v)}
+                  onClick={() => setShowRealCoding((value) => !value)}
                 >
                   {showRealCoding ? "Show Digital" : "Show Real"}
                 </button>
               </div>
 
-              <div className="mode-example__subtitle">coding grid 6×5</div>
+              <div className="mode-example__subtitle">coding grid 6x5</div>
 
               <div
                 className="mode-flip mode-flip--coding"
@@ -208,9 +245,9 @@ export function AssignmentModePicker({ onSelect }: Props) {
                       role="grid"
                       aria-label="Digital coding grid example"
                     >
-                      {CODING_SYMBOLS_6X5.map((cell, idx) => {
-                        const r = Math.floor(idx / 6);
-                        const c = idx % 6;
+                      {CODING_SYMBOLS_6X5.map((cell, index) => {
+                        const r = Math.floor(index / 6);
+                        const c = index % 6;
                         return (
                           <div
                             key={`${r}-${c}`}

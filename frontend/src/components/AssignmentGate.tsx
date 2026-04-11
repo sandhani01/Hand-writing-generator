@@ -6,9 +6,15 @@ type Props = {
   theme: "dark" | "light";
   onToggleTheme: () => void;
   onSelectMode: (mode: AssignmentMode) => void;
+  onOpenDemo: () => void;
 };
 
-export function AssignmentGate({ theme, onToggleTheme, onSelectMode }: Props) {
+export function AssignmentGate({
+  theme,
+  onToggleTheme,
+  onSelectMode,
+  onOpenDemo,
+}: Props) {
   return (
     <div className="app app--gate">
       <a className="skip-link" href="#assignment-picker">
@@ -18,7 +24,7 @@ export function AssignmentGate({ theme, onToggleTheme, onSelectMode }: Props) {
         <span className="gate-brand">Handwritten Notes</span>
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
-      <AssignmentModePicker onSelect={onSelectMode} />
+      <AssignmentModePicker onSelect={onSelectMode} onOpenDemo={onOpenDemo} />
     </div>
   );
 }
