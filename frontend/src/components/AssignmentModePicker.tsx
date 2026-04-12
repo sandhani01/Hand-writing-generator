@@ -65,26 +65,13 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
     >
       <div className="mode-picker__inner">
         <header className="mode-picker__header">
-          <div className="mode-picker__icon" aria-hidden="true">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </div>
+          <div className="mode-picker__eyebrow">Handwriting Studio</div>
           <h1 id="mode-picker-title" className="mode-picker__title">
-            What are you writing today?
+            Transform your text into<br />
+            <span className="mode-picker__title-accent">authentic handwriting</span>
           </h1>
           <p id="mode-picker-desc" className="mode-picker__lede">
-            Choose your assignment type 
+            Select your assignment type to get started. Upload your handwriting samples, compose your text, and download beautifully rendered pages.
           </p>
         </header>
 
@@ -99,15 +86,24 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
               className="mode-instructions__item mode-instructions__item--simple"
               onClick={() => onSelect("simple")}
             >
+              <div className="mode-instructions__badge">Most Popular</div>
               <div
                 className="mode-instructions__icon mode-instructions__icon--simple"
                 aria-hidden
               >
-                Aa
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
               </div>
               <div className="mode-instructions__text">
-                <div className="mode-instructions__name">Simple assignments</div>
-             
+                <div className="mode-instructions__name">Simple Assignments</div>
+                <div className="mode-instructions__detail">Essays, notes, and general handwriting. Upload alphabet datasets only.</div>
+              </div>
+              <div className="mode-instructions__arrow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </button>
 
@@ -116,15 +112,24 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
               className="mode-instructions__item mode-instructions__item--demo"
               onClick={onOpenDemo}
             >
+              <div className="mode-instructions__badge mode-instructions__badge--demo">Quick Start</div>
               <div
                 className="mode-instructions__icon mode-instructions__icon--demo"
                 aria-hidden
               >
-                Demo
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
+                </svg>
               </div>
               <div className="mode-instructions__text">
-                <div className="mode-instructions__name">Demo tour</div>
-               
+                <div className="mode-instructions__name">Demo Tour</div>
+                <div className="mode-instructions__detail">Learn how the app works with a guided walkthrough of all features.</div>
+              </div>
+              <div className="mode-instructions__arrow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </button>
 
@@ -133,15 +138,24 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
               className="mode-instructions__item mode-instructions__item--coding"
               onClick={() => onSelect("coding")}
             >
+              <div className="mode-instructions__badge mode-instructions__badge--coding">Advanced</div>
               <div
                 className="mode-instructions__icon mode-instructions__icon--coding"
                 aria-hidden
               >
-                {"</" + ">"}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="16 18 22 12 16 6" />
+                  <polyline points="8 6 2 12 8 18" />
+                </svg>
               </div>
               <div className="mode-instructions__text">
-                <div className="mode-instructions__name">Coding assignments</div>
-                
+                <div className="mode-instructions__name">Coding Assignments</div>
+                <div className="mode-instructions__detail">Code with special characters. Upload both alphabet and coding symbol datasets.</div>
+              </div>
+              <div className="mode-instructions__arrow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </button>
           </div>
