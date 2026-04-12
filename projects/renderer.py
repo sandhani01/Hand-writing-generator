@@ -55,7 +55,7 @@ ASCENDERS = set("bdfhklt")
 DESCENDERS = set("gjpqy")
 X_HEIGHT_LOWER = set("acemnorsuvwxz")
 TOP_SYMBOLS = set("^'\"`")
-MID_SYMBOLS = set(":+<>=~")
+MID_SYMBOLS = set("-:+<>=~")
 LOW_SYMBOLS = set("_")
 
 SYMBOL_FOLDER_MAP = {

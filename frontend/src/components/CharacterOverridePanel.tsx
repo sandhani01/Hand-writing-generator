@@ -182,14 +182,24 @@ export function CharacterOverridePanel({
             disabled={!isSupported}
             onChange={(event) => setSelectedChar(event.target.value)}
           >
-            {selectableCharacters.length ? null : (
-              <option value="">No characters in compose box yet</option>
+            {textCharacters.length ? (
+              <optgroup label="In Compose Box">
+                {selectableCharacters.map((char, index) => (
+                  <option key={getCharacterKey(char, index)} value={char}>
+                    {getCharacterLabel(char)}
+                  </option>
+                ))}
+              </optgroup>
+            ) : (
+               <option value="">No characters in compose box yet</option>
             )}
-            {selectableCharacters.map((char, index) => (
-              <option key={getCharacterKey(char, index)} value={char}>
-                {getCharacterLabel(char)}
-              </option>
-            ))}
+            <optgroup label="All Supported Characters">
+              {CHARACTER_ORDER.map((char, index) => (
+                <option key={`all-${getCharacterKey(char, index)}`} value={char}>
+                  {getCharacterLabel(char)}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </label>
 
