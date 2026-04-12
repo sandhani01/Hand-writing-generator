@@ -1583,6 +1583,7 @@ export default function App() {
         onToggleTheme={toggleTheme}
         onSelectMode={selectAssignmentMode}
         onOpenDemo={() => setIsDemoOpen(true)}
+        onLogout={handleLogout}
       />
     );
   }

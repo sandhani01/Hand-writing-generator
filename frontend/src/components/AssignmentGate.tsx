@@ -7,6 +7,7 @@ type Props = {
   onToggleTheme: () => void;
   onSelectMode: (mode: AssignmentMode) => void;
   onOpenDemo: () => void;
+  onLogout: () => void;
 };
 
 export function AssignmentGate({
@@ -14,6 +15,7 @@ export function AssignmentGate({
   onToggleTheme,
   onSelectMode,
   onOpenDemo,
+  onLogout,
 }: Props) {
   return (
     <div className="app app--gate">
@@ -22,7 +24,12 @@ export function AssignmentGate({
       </a>
       <div className="gate-topbar">
         <span className="gate-brand">Handwritten Notes</span>
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={onLogout}>
+            Sign out
+          </button>
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        </div>
       </div>
       <AssignmentModePicker onSelect={onSelectMode} onOpenDemo={onOpenDemo} />
     </div>

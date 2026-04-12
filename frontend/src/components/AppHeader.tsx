@@ -28,7 +28,7 @@ export function AppHeader({
       <div className="app-header__brand">
         <div className="app-header__logo">
           <div className="app-header__logo-mark" aria-hidden="true" />
-          <span className="app-header__logo-text">Handwriting Studio</span>
+     
         </div>
         <div className="app-header__title-row">
           <h1 className="app-header__title" id="app-page-title">

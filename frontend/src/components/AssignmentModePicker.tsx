@@ -65,14 +65,12 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
     >
       <div className="mode-picker__inner">
         <header className="mode-picker__header">
-          <div className="mode-picker__eyebrow">Handwriting Studio</div>
+     
           <h1 id="mode-picker-title" className="mode-picker__title">
-            Transform your text into<br />
-            <span className="mode-picker__title-accent">authentic handwriting</span>
+            What's Your Assignment ?<br />
+            
           </h1>
-          <p id="mode-picker-desc" className="mode-picker__lede">
-            Select your assignment type to get started. Upload your handwriting samples, compose your text, and download beautifully rendered pages.
-          </p>
+          
         </header>
 
         <section className="mode-picker__instructions" aria-label="Mode instructions">
@@ -86,7 +84,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
               className="mode-instructions__item mode-instructions__item--simple"
               onClick={() => onSelect("simple")}
             >
-              <div className="mode-instructions__badge">Most Popular</div>
+            
               <div
                 className="mode-instructions__icon mode-instructions__icon--simple"
                 aria-hidden
@@ -112,7 +110,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
               className="mode-instructions__item mode-instructions__item--demo"
               onClick={onOpenDemo}
             >
-              <div className="mode-instructions__badge mode-instructions__badge--demo">Quick Start</div>
+        
               <div
                 className="mode-instructions__icon mode-instructions__icon--demo"
                 aria-hidden
@@ -138,7 +136,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
               className="mode-instructions__item mode-instructions__item--coding"
               onClick={() => onSelect("coding")}
             >
-              <div className="mode-instructions__badge mode-instructions__badge--coding">Advanced</div>
+ 
               <div
                 className="mode-instructions__icon mode-instructions__icon--coding"
                 aria-hidden
