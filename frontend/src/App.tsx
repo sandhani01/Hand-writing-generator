@@ -202,6 +202,32 @@ export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
   const workspaceBootKeyRef = useRef<string | null>(null);
 
+  const handleCopyConfig = useCallback(() => {
+    try {
+      const configStr = JSON.stringify(options, null, 2);
+      navigator.clipboard.writeText(configStr);
+    } catch {
+      // Ignore copy failures
+    }
+  }, [options]);
+
+  const handleApplyConfig = useCallback(() => {
+    const input = prompt(
+      "Paste your fine-tuning configuration JSON here to apply it:"
+    );
+    if (!input) return;
+
+    try {
+      const parsed = JSON.parse(input);
+      const normalized = normalizeRenderOptions(parsed);
+      setOptions(normalized);
+    } catch (error) {
+      alert(
+        "Could not apply configuration. Please ensure you pasted a valid JSON string."
+      );
+    }
+  }, []);
+
   const selectedRender = useMemo(
     () => renderHistory.find((item) => item.id === selectedRenderId) ?? null,
     [renderHistory, selectedRenderId]
@@ -1605,6 +1631,9 @@ export default function App() {
         }
         onResetWorkspace={() => void resetWorkspace()}
         onLogout={handleLogout}
+        onRender={handleRender}
+        canRender={canRender}
+        isRendering={isRendering}
         isLoadingDatasets={isLoadingDatasets || isLoadingRenders}
       />
 
@@ -1646,6 +1675,8 @@ export default function App() {
               }))
             }
             onApplyPreset={applyTuningPreset}
+            onCopyConfig={handleCopyConfig}
+            onApplyConfig={handleApplyConfig}
             onResetAllFilters={resetAllFilters}
           />
 

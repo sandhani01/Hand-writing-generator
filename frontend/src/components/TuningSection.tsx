@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { SliderControl } from "./SliderControl";
 import { WorkflowSection } from "./WorkflowSection";
 import { CharacterOverridePanel } from "./CharacterOverridePanel";
@@ -31,6 +31,8 @@ type Props = {
   ) => void;
   onInkColorChange: (color: string) => void;
   onInkColorReset: () => void;
+  onCopyConfig: () => void;
+  onApplyConfig: () => void;
   onResetAllFilters: () => void;
 };
 
@@ -49,9 +51,18 @@ export function TuningSection({
   onCharacterOverrideFieldReset,
   onInkColorChange,
   onInkColorReset,
+  onCopyConfig,
+  onApplyConfig,
   onResetAllFilters,
 }: Props) {
   const advancedRegionId = useId();
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = () => {
+    onCopyConfig();
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
   const advancedLabelId = useId();
 
   return (
@@ -64,10 +75,27 @@ export function TuningSection({
           <div className="workflow-actions">
             <button
               type="button"
-              className="btn btn--ghost"
+              className="btn btn--ghost btn--sm"
+              onClick={handleCopy}
+              title="Copy current tuning configuration to clipboard"
+            >
+              {isCopied ? "Copied!" : "Copy Config"}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={onApplyConfig}
+              title="Apply a saved configuration JSON"
+            >
+              Import
+            </button>
+            <div className="workflow-actions__divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
               onClick={onResetAllFilters}
             >
-              Reset tuning
+              Reset
             </button>
           </div>
         }

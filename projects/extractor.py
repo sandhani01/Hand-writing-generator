@@ -699,7 +699,7 @@ def prepare_cells_for_normalization(ordered_cells, clean_symbols=False):
         group = glyph_group(char)
         prepared_roi = roi
 
-        if clean_symbols and group == "symbol":
+        if clean_symbols and (group == "symbol" or char in "!@#%^&*()-+=[]{};:'\"<>/?\\|`"):
             prepared_roi = clean_small_components(prepared_roi, min_area=4, ratio=0.08)
             prepared_roi = crop_to_content(prepared_roi, pad=2)
 
@@ -996,6 +996,223 @@ def load_labels_from_file(path):
     return labels
 
 
+PERSPECTIVE_OUTPUT_SIZE = 800
+
+
+def find_grid_contour(image):
+    """Find the largest square-ish quadrilateral contour (the printed grid border)."""
+
+    if image.ndim == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image.copy()
+
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    thresh = cv2.adaptiveThreshold(
+        blur,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        11,
+        2,
+    )
+
+    kernel = np.ones((3, 3), np.uint8)
+    thresh = cv2.dilate(thresh, kernel, iterations=1)
+
+    contours, _ = cv2.findContours(
+        thresh,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE,
+    )
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    image_area = image.shape[0] * image.shape[1]
+
+    for contour in contours:
+        peri = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
+
+        if len(approx) == 4:
+            area = cv2.contourArea(approx)
+            if area < image_area * 0.15:
+                continue
+
+            x, y, w, h = cv2.boundingRect(approx)
+            aspect = max(w, h) / max(min(w, h), 1)
+            if aspect < 1.4:
+                return approx.reshape(4, 2)
+
+    raise RuntimeError(
+        "Could not find the grid border in the image. "
+        "Make sure the full grid is visible in the photo."
+    )
+
+
+def order_corners(pts):
+    """Order 4 corner points as: top-left, top-right, bottom-right, bottom-left."""
+
+    pts = pts.astype(np.float32)
+
+    s = pts.sum(axis=1)
+    tl = pts[np.argmin(s)]
+    br = pts[np.argmax(s)]
+
+    d = np.diff(pts, axis=1).ravel()
+    tr = pts[np.argmin(d)]
+    bl = pts[np.argmax(d)]
+
+    return np.array([tl, tr, br, bl], dtype=np.float32)
+
+
+def perspective_correct(image, corners, output_size=PERSPECTIVE_OUTPUT_SIZE):
+    """Warp the image so the detected grid becomes a perfect square."""
+
+    ordered = order_corners(corners)
+
+    dst = np.array(
+        [
+            [0, 0],
+            [output_size - 1, 0],
+            [output_size - 1, output_size - 1],
+            [0, output_size - 1],
+        ],
+        dtype=np.float32,
+    )
+
+    matrix = cv2.getPerspectiveTransform(ordered, dst)
+    warped = cv2.warpPerspective(image, matrix, (output_size, output_size))
+
+    return warped, matrix
+
+
+def extract_cells_uniform(
+    binary,
+    labels,
+    grid_rows,
+    grid_cols,
+    inset_ratio=0.15,
+    pad=4,
+):
+    """Divide the rectified binary image into uniform grid cells and extract content."""
+
+    height, width = binary.shape[:2]
+    cell_w = width / float(grid_cols)
+    cell_h = height / float(grid_rows)
+
+    ordered = []
+
+    for row in range(grid_rows):
+        for col in range(grid_cols):
+            label_index = row * grid_cols + col
+            if label_index >= len(labels):
+                break
+
+            char = labels[label_index]
+            if char == "":
+                continue
+
+            x1 = int(round(col * cell_w))
+            x2 = int(round((col + 1) * cell_w))
+            y1 = int(round(row * cell_h))
+            y2 = int(round((row + 1) * cell_h))
+
+            inset_x = int(round((x2 - x1) * inset_ratio))
+            inset_y = int(round((y2 - y1) * inset_ratio))
+
+            roi_x1 = min(x2 - 1, x1 + inset_x)
+            roi_x2 = max(roi_x1 + 1, x2 - inset_x)
+            roi_y1 = min(y2 - 1, y1 + inset_y)
+            roi_y2 = max(roi_y1 + 1, y2 - inset_y)
+
+            roi = binary[roi_y1:roi_y2, roi_x1:roi_x2]
+            roi = crop_to_content(roi, pad=pad)
+            h, w = roi.shape[:2]
+
+            if h < 2 or w < 2:
+                roi = np.zeros((16, 16), dtype=np.uint8)
+                ordered.append((char, roi, 16, 16, row, col))
+            else:
+                ordered.append((char, roi, w, h, row, col))
+
+    return ordered
+
+
+def save_perspective_debug(
+    original,
+    corners,
+    rectified,
+    path,
+    labels,
+    grid_rows,
+    grid_cols,
+):
+    """Save a debug overlay showing the detected grid contour and rectified cell grid."""
+
+    overlay = original.copy()
+
+    pts = order_corners(corners).astype(np.int32).reshape((-1, 1, 2))
+    cv2.polylines(overlay, [pts], True, (0, 255, 0), 3)
+
+    corner_labels = ["TL", "TR", "BR", "BL"]
+    ordered = order_corners(corners).astype(np.int32)
+    for i, label in enumerate(corner_labels):
+        cv2.circle(overlay, tuple(ordered[i]), 8, (0, 0, 255), -1)
+        cv2.putText(
+            overlay,
+            label,
+            (ordered[i][0] + 12, ordered[i][1] - 8),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 0, 255),
+            2,
+            cv2.LINE_AA,
+        )
+
+    rect_overlay = rectified.copy()
+    if rect_overlay.ndim == 2:
+        rect_overlay = cv2.cvtColor(rect_overlay, cv2.COLOR_GRAY2BGR)
+
+    height, width = rectified.shape[:2]
+    cell_w = width / float(grid_cols)
+    cell_h = height / float(grid_rows)
+
+    for row in range(grid_rows + 1):
+        y = int(round(row * cell_h))
+        cv2.line(rect_overlay, (0, y), (width - 1, y), (0, 255, 0), 1)
+    for col in range(grid_cols + 1):
+        x = int(round(col * cell_w))
+        cv2.line(rect_overlay, (x, 0), (x, height - 1), (0, 255, 0), 1)
+
+    for row in range(grid_rows):
+        for col in range(grid_cols):
+            label_index = row * grid_cols + col
+            if label_index >= len(labels):
+                continue
+            char = labels[label_index]
+            if char == "":
+                continue
+            x = int(round(col * cell_w)) + 4
+            y = int(round(row * cell_h)) + 18
+            cv2.putText(
+                rect_overlay,
+                char,
+                (x, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.45,
+                (0, 255, 0),
+                1,
+                cv2.LINE_AA,
+            )
+
+    target_h = overlay.shape[0]
+    scale = target_h / max(rect_overlay.shape[0], 1)
+    new_w = max(1, int(round(rect_overlay.shape[1] * scale)))
+    rect_resized = cv2.resize(rect_overlay, (new_w, target_h))
+
+    combined = np.hstack([overlay, rect_resized])
+    cv2.imwrite(path, combined)
+
+
 def extract(
     image_path=DEFAULT_IMAGE_PATH,
     output_folder=None,
@@ -1003,7 +1220,7 @@ def extract(
     grid_rows=HANDWRITING_GRID_ROWS,
     grid_cols=HANDWRITING_GRID_COLS,
     labels=None,
-    grid_mode="auto",
+    grid_mode="perspective",
     skip_morph=False,
     use_bounds=False,
     center_symbols=False,
@@ -1035,48 +1252,118 @@ def extract(
     if image is None:
         raise FileNotFoundError(f"Could not read image: {image_path}")
 
-    if threshold_mode == "auto":
-        thresh, chosen_threshold_mode = choose_threshold_mode(
-            image,
-            skip_open=skip_morph,
-            grid_rows=grid_rows,
-            grid_cols=grid_cols,
+    if grid_mode == "perspective":
+        print("Grid mode: perspective (printed grid detection)")
+        try:
+            corners = find_grid_contour(image)
+            print("Grid contour found — 4 corners detected.")
+        except RuntimeError as exc:
+            print(f"Perspective detection failed: {exc}")
+            print(f"Falling back to auto grid mode... (Looking for {grid_rows}x{grid_cols} layout)")
+            grid_mode = "auto"
+
+    if grid_mode == "perspective":
+        rectified_color, transform_matrix = perspective_correct(
+            image, corners, output_size=PERSPECTIVE_OUTPUT_SIZE
         )
-        print("Threshold mode:", chosen_threshold_mode)
-    else:
-        thresh = preprocess_image(
-            image,
-            skip_open=skip_morph,
-            mode=threshold_mode,
+        print(f"Perspective corrected to {PERSPECTIVE_OUTPUT_SIZE}x{PERSPECTIVE_OUTPUT_SIZE}.")
+
+        rectified_gray = normalize_input_for_extraction(rectified_color)
+        rectified_blur = cv2.GaussianBlur(rectified_gray, (5, 5), 0)
+        rectified_binary = cv2.adaptiveThreshold(
+            rectified_blur,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY_INV,
+            11,
+            2,
+        )
+        rectified_binary = apply_post_threshold_cleanup(
+            rectified_binary, skip_open=skip_morph
         )
 
-    if grid_mode == "fixed":
-        ordered_cells, grid_bounds = build_fixed_ordered_cells(
-            thresh, labels, grid_rows, grid_cols
+        ordered_cells = extract_cells_uniform(
+            rectified_binary, labels, grid_rows, grid_cols
         )
         print("Ordered glyph cells:", len(ordered_cells))
-        save_fixed_grid_debug(
-            image, grid_bounds, debug_output_path, labels, grid_rows, grid_cols
+
+        save_perspective_debug(
+            image, corners, rectified_color, debug_output_path,
+            labels, grid_rows, grid_cols
         )
         print("Saved debug overlay:", debug_output_path)
-    elif grid_mode == "lines":
-        row_lines, col_lines, line_mask = detect_grid_lines(
-            thresh, grid_rows, grid_cols
-        )
+    else:
+        if threshold_mode == "auto":
+            thresh, chosen_threshold_mode = choose_threshold_mode(
+                image,
+                skip_open=skip_morph,
+                grid_rows=grid_rows,
+                grid_cols=grid_cols,
+            )
+            print("Threshold mode:", chosen_threshold_mode)
+        else:
+            thresh = preprocess_image(
+                image,
+                skip_open=skip_morph,
+                mode=threshold_mode,
+            )
 
-        if row_lines and col_lines:
-            cleaned = remove_line_mask(thresh, line_mask)
-            ordered_cells = build_line_ordered_cells(
-                cleaned, labels, row_lines, col_lines
+        if grid_mode == "fixed":
+            ordered_cells, grid_bounds = build_fixed_ordered_cells(
+                thresh, labels, grid_rows, grid_cols
             )
             print("Ordered glyph cells:", len(ordered_cells))
-            save_line_grid_debug(
-                image, row_lines, col_lines, debug_output_path, labels
+            save_fixed_grid_debug(
+                image, grid_bounds, debug_output_path, labels, grid_rows, grid_cols
             )
             print("Saved debug overlay:", debug_output_path)
+        elif grid_mode == "lines":
+            row_lines, col_lines, line_mask = detect_grid_lines(
+                thresh, grid_rows, grid_cols
+            )
+
+            if row_lines and col_lines:
+                cleaned = remove_line_mask(thresh, line_mask)
+                ordered_cells = build_line_ordered_cells(
+                    cleaned, labels, row_lines, col_lines
+                )
+                print("Ordered glyph cells:", len(ordered_cells))
+                save_line_grid_debug(
+                    image, row_lines, col_lines, debug_output_path, labels
+                )
+                print("Saved debug overlay:", debug_output_path)
+            else:
+                cleaned = thresh
+                components = gather_components(cleaned)
+                print("Detected components:", len(components))
+
+                row_centers, col_centers = estimate_grid_centers(
+                    components, grid_rows, grid_cols
+                )
+                print("Row centers:", [round(center, 1) for center in row_centers])
+                print("Col centers:", [round(center, 1) for center in col_centers])
+
+                if use_bounds:
+                    ordered_cells, row_bounds, col_bounds = build_center_bounds_cells(
+                        cleaned, labels, row_centers, col_centers
+                    )
+                    save_bounds_debug(
+                        image, row_bounds, col_bounds, debug_output_path, labels
+                    )
+                else:
+                    cells = assign_components_to_cells(
+                        components, row_centers, col_centers, grid_rows, grid_cols
+                    )
+                    ordered_cells = build_ordered_cells(
+                        cleaned, cells, labels, grid_rows, grid_cols
+                    )
+                    save_debug_overlay(
+                        image, cells, debug_output_path, labels, grid_rows, grid_cols
+                    )
+                print("Ordered glyph cells:", len(ordered_cells))
+                print("Saved debug overlay:", debug_output_path)
         else:
-            cleaned = thresh
-            components = gather_components(cleaned)
+            components = gather_components(thresh)
             print("Detected components:", len(components))
 
             row_centers, col_centers = estimate_grid_centers(
@@ -1085,45 +1372,16 @@ def extract(
             print("Row centers:", [round(center, 1) for center in row_centers])
             print("Col centers:", [round(center, 1) for center in col_centers])
 
-            if use_bounds:
-                ordered_cells, row_bounds, col_bounds = build_center_bounds_cells(
-                    cleaned, labels, row_centers, col_centers
-                )
-                save_bounds_debug(
-                    image, row_bounds, col_bounds, debug_output_path, labels
-                )
-            else:
-                cells = assign_components_to_cells(
-                    components, row_centers, col_centers, grid_rows, grid_cols
-                )
-                ordered_cells = build_ordered_cells(
-                    cleaned, cells, labels, grid_rows, grid_cols
-                )
-                save_debug_overlay(
-                    image, cells, debug_output_path, labels, grid_rows, grid_cols
-                )
+            cells = assign_components_to_cells(
+                components, row_centers, col_centers, grid_rows, grid_cols
+            )
+            ordered_cells = build_ordered_cells(
+                thresh, cells, labels, grid_rows, grid_cols
+            )
+
             print("Ordered glyph cells:", len(ordered_cells))
+            save_debug_overlay(image, cells, debug_output_path, labels, grid_rows, grid_cols)
             print("Saved debug overlay:", debug_output_path)
-    else:
-        components = gather_components(thresh)
-        print("Detected components:", len(components))
-
-        row_centers, col_centers = estimate_grid_centers(
-            components, grid_rows, grid_cols
-        )
-        print("Row centers:", [round(center, 1) for center in row_centers])
-        print("Col centers:", [round(center, 1) for center in col_centers])
-
-        cells = assign_components_to_cells(
-            components, row_centers, col_centers, grid_rows, grid_cols
-        )
-        ordered_cells = build_ordered_cells(
-            thresh, cells, labels, grid_rows, grid_cols
-        )
-
-        print("Ordered glyph cells:", len(ordered_cells))
-        save_debug_overlay(image, cells, debug_output_path, labels, grid_rows, grid_cols)
-        print("Saved debug overlay:", debug_output_path)
 
     ordered_cells = prepare_cells_for_normalization(
         ordered_cells,
@@ -1153,14 +1411,14 @@ def extract(
         elif group == "lower_asc":
             target_height_ratio = 0.74
         elif group == "lower_desc":
-            target_height_ratio = 0.80
-            baseline_ratio = 0.70
+            target_height_ratio = 0.70
+            baseline_ratio = 0.76
         elif group == "upper":
-            target_height_ratio = 0.78
+            target_height_ratio = 1.0
         elif group == "digit":
             target_height_ratio = 0.70
         elif group == "symbol":
-            target_height_ratio = 0.52
+            target_height_ratio = 1.0
 
         glyph = normalize_to_canvas(
             roi,
@@ -1168,7 +1426,7 @@ def extract(
             final_size=64,
             target_height_ratio=target_height_ratio,
             baseline_ratio=baseline_ratio,
-            center_vertical=center_symbols and group == "symbol",
+            center_vertical=(group == "symbol"),
         )
 
         folder = os.path.join(output_folder, folder_name(char))
@@ -1203,6 +1461,9 @@ if __name__ == "__main__":
             if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
                 grid_rows = int(parts[0])
                 grid_cols = int(parts[1])
+                # Default to coding symbols if 5x6 grid is specified
+                if grid_rows == 5 and grid_cols == 6 and labels is None:
+                    labels = DEFAULT_CODING_SYMBOLS
             else:
                 raise ValueError("--grid must look like 6x6 or 8x8.")
 
@@ -1248,7 +1509,7 @@ if __name__ == "__main__":
                     grid_rows=CODING_GRID_ROWS,
                     grid_cols=CODING_GRID_COLS,
                     labels=labels,
-                    grid_mode="lines",
+                    grid_mode="perspective",
                     skip_morph=True,
                     use_bounds=True,
                     center_symbols=True,

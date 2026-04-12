@@ -55,7 +55,7 @@ ASCENDERS = set("bdfhklt")
 DESCENDERS = set("gjpqy")
 X_HEIGHT_LOWER = set("acemnorsuvwxz")
 TOP_SYMBOLS = set("^'\"`")
-MID_SYMBOLS = set("-:+<>=~")
+MID_SYMBOLS = set("-:+;<>=~")
 LOW_SYMBOLS = set("_")
 
 SYMBOL_FOLDER_MAP = {
@@ -95,20 +95,20 @@ SYMBOL_FOLDER_MAP = {
 
 DEFAULT_CHAR_METRICS = {
     "upper": {
-        "scale_range": (0.45, 0.50),
-        "width_factor": 0.95,
+        "scale_range": (0.32, 0.36),
+        "width_factor": 0.22,
         "baseline_shift": 0,
-        "stroke_gain_multiplier": 0.72,
     },
     "lower_asc": {
         "scale_range": (0.41, 0.45),
         "width_factor": 0.96,
         "baseline_shift": 0,
     },
+
     "lower_desc": {
-        "scale_range": (0.46, 0.52),
-        "width_factor": 0.96,
-        "baseline_shift": 16,
+        "scale_range": (0.40, 0.44),
+        "width_factor": 0.94,
+        "baseline_shift": 10,
     },
     "lower_x": {
         "scale_range": (0.33, 0.36),
@@ -121,34 +121,39 @@ DEFAULT_CHAR_METRICS = {
         "baseline_shift": 0,
     },
     "comma": {
-        "scale_range": (0.28, 0.34),
+        "scale_range": (0.16, 0.20),
         "width_factor": 0.70,
         "baseline_shift": 10,
     },
     "dot": {
-        "scale_range": (0.22, 0.28),
+        "scale_range": (0.12, 0.14),
         "width_factor": 0.62,
         "baseline_shift": 0,
     },
+    "symbol": {
+        "scale_range": (0.36,0.40),
+        "width_factor": 1.05,
+        "baseline_shift": 2,
+    },
     "symbol_top": {
-        "scale_range": (0.50, 0.56),
-        "width_factor": 1.08,
+        "scale_range": (0.36,0.40),
+        "width_factor": 1.05,
         "baseline_shift": -18,
     },
-    "symbol_mid": {
-        "scale_range": (0.52, 0.58),
-        "width_factor": 1.18,
-        "baseline_shift": -10,
+    "symbol_mid_uplifted": {
+        "scale_range": (0.36,0.40),
+        "width_factor": 1.10,
+        "baseline_shift": -7,
     },
-    "symbol_low": {
-        "scale_range": (0.52, 0.58),
-        "width_factor": 1.22,
+    "symbol_mid": {
+        "scale_range": (0.36,0.40),
+        "width_factor": 1.10,
         "baseline_shift": 4,
     },
-    "symbol": {
-        "scale_range": (0.54, 0.60),
-        "width_factor": 1.50,
-        "baseline_shift": 0,
+    "symbol_low": {
+        "scale_range": (0.36,0.40),
+        "width_factor": 1.10,
+        "baseline_shift": 4,
     },
     "other": {
         "scale_range": (0.33, 0.37),
@@ -182,8 +187,13 @@ def clean_loaded_glyph_components(
         return glyph_array
 
     mask = (glyph_array > 0).astype(np.uint8)
+    
+    # Bridge tiny gaps (like interpolation ringing) so soft edges stay connected to the main body
+    kernel = np.ones((3, 3), np.uint8)
+    dilated_mask = cv2.dilate(mask, kernel, iterations=1)
+    
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
-        mask, connectivity=8
+        dilated_mask, connectivity=8
     )
 
     if num_labels <= 1:
@@ -266,7 +276,7 @@ def clean_loaded_glyph_components(
     if keep_mask.sum() == 0:
         return glyph_array
 
-    return (keep_mask * 255).astype(np.uint8)
+    return (glyph_array * keep_mask).astype(np.uint8)
 
 
 def clean_loaded_glyph(glyph_gray, folder):
@@ -277,14 +287,19 @@ def clean_loaded_glyph(glyph_gray, folder):
     if glyph_array.size == 0 or np.max(glyph_array) == 0:
         return glyph_gray
 
-    preserve_neighbors = folder in MULTIPART_GLYPH_FOLDERS
-    ratio = 0.08 if preserve_neighbors else 0.18
+    preserve_neighbors = True
+    ratio = 0.08
+    
     cleaned = clean_loaded_glyph_components(
         glyph_array,
         min_area=4,
         ratio=ratio,
         preserve_neighbors=preserve_neighbors,
     )
+    
+    # Soften jagged/aliased edges (from binary extraction) into smooth natural ink
+    cleaned = cv2.GaussianBlur(cleaned, (3, 3), 0.8)
+    
     return Image.fromarray(cleaned, "L")
 
 
@@ -311,6 +326,8 @@ def get_char_group(char):
         return "dot"
     if char in TOP_SYMBOLS:
         return "symbol_top"
+    if char == "-":
+        return "symbol_mid_uplifted"
     if char in MID_SYMBOLS:
         return "symbol_mid"
     if char in LOW_SYMBOLS:
