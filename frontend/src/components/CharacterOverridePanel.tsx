@@ -157,14 +157,12 @@ export function CharacterOverridePanel({
   );
 
   return (
-    <section className="control-group control-group--character">
-      <div className="control-group__header">
-        <h3 className="control-group__title">Fix individual characters</h3>
-        <p className="control-group__desc">
-          When one glyph looks off, tune it without affecting the rest of
-          the page.
-        </p>
-      </div>
+    <>
+      <p className="control-group__desc">
+        When one glyph looks off, tune it without affecting the rest of
+        the page.
+      </p>
+
 
       {!isSupported ? (
         <p className="character-compat-warning">
@@ -316,6 +314,6 @@ export function CharacterOverridePanel({
           tuning.
         </p>
       )}
-    </section>
+    </>
   );
 }

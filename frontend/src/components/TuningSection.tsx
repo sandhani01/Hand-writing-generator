@@ -56,6 +56,8 @@ export function TuningSection({
   onResetAllFilters,
 }: Props) {
   const advancedRegionId = useId();
+  const advancedLabelId = useId();
+  const [expandedSubSections, setExpandedSubSections] = useState<Set<string>>(new Set());
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = () => {
@@ -63,7 +65,16 @@ export function TuningSection({
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
-  const advancedLabelId = useId();
+
+  const toggleSubSection = (title: string) => {
+    const next = new Set(expandedSubSections);
+    if (next.has(title)) {
+      next.delete(title);
+    } else {
+      next.add(title);
+    }
+    setExpandedSubSections(next);
+  };
 
   return (
     <article className="surface surface--raised">
@@ -174,56 +185,116 @@ export function TuningSection({
           aria-labelledby={advancedLabelId}
           inert={showAdvanced ? undefined : true}
         >
-          <label className="color-control">
-            <div className="color-control__header">
-              <span className="color-control__label">Ink color</span>
+          <div className="control-group control-group--ink">
+            <header 
+              className="control-group__header control-group__header--clickable"
+              onClick={() => toggleSubSection("Ink Color")}
+            >
+              <h3 className="control-group__title">Ink color</h3>
               <button
                 type="button"
-                className="btn btn--ghost btn--mini"
-                disabled={options.inkColor === defaultOptions.inkColor}
-                onClick={onInkColorReset}
+                className="btn btn--collapse btn--collapse-mini"
+                aria-expanded={expandedSubSections.has("Ink Color")}
               >
-                Reset
+                <span
+                  className="btn__chevron"
+                  data-open={expandedSubSections.has("Ink Color")}
+                  aria-hidden
+                />
               </button>
-            </div>
-            <div className="color-control__row">
-              <input
-                type="color"
-                value={options.inkColor}
-                onChange={(event) => onInkColorChange(event.target.value)}
-                aria-label="Ink color"
-              />
-              <code>{options.inkColor}</code>
-            </div>
-          </label>
+            </header>
+            {expandedSubSections.has("Ink Color") && (
+              <div className="color-control">
+                <div className="color-control__header">
+                  <span className="color-control__label">Choose ink color</span>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--mini"
+                    disabled={options.inkColor === defaultOptions.inkColor}
+                    onClick={onInkColorReset}
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div className="color-control__row">
+                  <input
+                    type="color"
+                    value={options.inkColor}
+                    onChange={(event) => onInkColorChange(event.target.value)}
+                    aria-label="Ink color"
+                  />
+                  <code>{options.inkColor}</code>
+                </div>
+              </div>
+            )}
+          </div>
 
-          <CharacterOverridePanel
-            text={text}
-            charOverrides={options.charOverrides}
-            isSupported={supportsCharacterOverrides}
-            onChange={onCharacterOverrideChange}
-            onReset={onCharacterOverrideReset}
-            onResetField={onCharacterOverrideFieldReset}
-          />
+          <section className="control-group control-group--character">
+            <header 
+              className="control-group__header control-group__header--clickable"
+              onClick={() => toggleSubSection("Fix individual characters")}
+            >
+              <h3 className="control-group__title">Fix individual characters</h3>
+              <button
+                type="button"
+                className="btn btn--collapse btn--collapse-mini"
+                aria-expanded={expandedSubSections.has("Fix individual characters")}
+              >
+                <span
+                  className="btn__chevron"
+                  data-open={expandedSubSections.has("Fix individual characters")}
+                  aria-hidden
+                />
+              </button>
+            </header>
+            {expandedSubSections.has("Fix individual characters") && (
+              <CharacterOverridePanel
+                text={text}
+                charOverrides={options.charOverrides}
+                isSupported={supportsCharacterOverrides}
+                onChange={onCharacterOverrideChange}
+                onReset={onCharacterOverrideReset}
+                onResetField={onCharacterOverrideFieldReset}
+              />
+            )}
+          </section>
 
           {ADVANCED_GROUPS.map((group) => (
             <section className="control-group" key={group.title}>
-              <div className="control-group__header">
+              <header 
+                className="control-group__header control-group__header--clickable"
+                onClick={() => toggleSubSection(group.title)}
+              >
                 <h3 className="control-group__title">{group.title}</h3>
-                <p className="control-group__desc">{group.description}</p>
-              </div>
-              <div className="controls controls--advanced">
-                {group.controls.map((control) => (
-                  <SliderControl
-                    key={control.key}
-                    config={control}
-                    options={options}
-                    defaultValue={defaultOptions[control.key]}
-                    onChange={onNumericChange}
-                    onReset={onNumericReset}
+                <button
+                  type="button"
+                  className="btn btn--collapse btn--collapse-mini"
+                  aria-expanded={expandedSubSections.has(group.title)}
+                >
+                  <span
+                    className="btn__chevron"
+                    data-open={expandedSubSections.has(group.title)}
+                    aria-hidden
                   />
-                ))}
-              </div>
+                </button>
+              </header>
+              {expandedSubSections.has(group.title) && (
+                <>
+                  <p className="control-group__desc">{group.description}</p>
+                  <div className="controls controls--advanced">
+                    {group.controls.map((control) => (
+                      <SliderControl
+                        key={control.key}
+                        config={control}
+                        options={options}
+                        defaultValue={defaultOptions[control.key]}
+                        onChange={onNumericChange}
+                        onReset={onNumericReset}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </section>
           ))}
         </div>

@@ -48,16 +48,16 @@ const DEMO_THEME_STYLES = [
 const DEMO_SLIDES: DemoSlide[] = [
   {
     step: "01",
-    title: "Create Datasets",
-    tone: "Create Datasets",
+    title: "Print Grids",
+    tone: "Print Grids",
     imagePath: "/demo/01-Create Datasets.png",
-    imageAlt: "Create Datasets section demo screenshot",
+    imageAlt: "Print Grids",
     description:
-      "Write this on your Book first !",
+      "Print Grids as your first step",
     tips: [
-      "Write exactly as shown in image for better Extraction of your hand-writing",
-      "Write on a neat paper",
-      "Give spaces , Like shown in image",
+      "Download the Grids PDF",
+      "Print the Grids in Color or Black & White",
+      "Ensure the Grid lines are Strong without fading",
     ],
   },
   {

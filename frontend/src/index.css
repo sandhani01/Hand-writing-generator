@@ -2801,11 +2801,44 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
-  padding: 0.7rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s var(--ease-out);
+}
+
+.control-group:hover {
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line-strong));
 }
 
 .control-group__header {
-  margin-bottom: 0.48rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.control-group__header--clickable {
+  cursor: pointer;
+  user-select: none;
+  margin: -0.5rem -0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease;
+}
+
+.control-group__header--clickable:hover {
+  background: color-mix(in srgb, var(--accent-subtle) 40%, transparent);
+}
+
+.btn--collapse-mini {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  display: grid;
+  place-items: center;
+  color: var(--ink-secondary);
+  pointer-events: none; /* Header click handles it */
 }
 
 .control-group__title {
@@ -2931,7 +2964,7 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
   position: relative;
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
-  min-height: min(540px, 60vh);
+  min-height: min(820px, 85vh);
   display: grid;
   place-items: center;
   background-color: var(--preview-canvas);
@@ -3019,8 +3052,8 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
   box-shadow:
     0 4px 8px rgba(0, 0, 0, 0.25),
     0 24px 60px rgba(0, 0, 0, 0.4);
-  width: min(100%, 920px);
-  max-height: min(70dvh, 880px);
+  width: 100%;
+  max-height: min(82dvh, 1200px);
   object-fit: contain;
 }
 

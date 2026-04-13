@@ -91,15 +91,7 @@ export const BASIC_CONTROLS: SliderConfig[] = [
     step: 1,
     description: "Extra gap for spaces in your text.",
   },
-  {
-    key: "jitter",
-    label: "Wobble",
-    min: 0,
-    max: 12,
-    step: 0.5,
-    description: "Natural wobble for spacing, drift, and rotation.",
-    format: (value) => value.toFixed(1),
-  },
+
 ];
 
 export const ADVANCED_GROUPS: ControlGroup[] = [
@@ -279,7 +271,15 @@ export const ADVANCED_GROUPS: ControlGroup[] = [
         step: 0.1,
         description: "Maximum rotation in degrees in either direction.",
         format: (value) => `${value.toFixed(1)} deg`,
-      },
+      },  {
+    key: "jitter",
+    label: "Wobble",
+    min: 0,
+    max: 12,
+    step: 0.5,
+    description: "Natural wobble for spacing, drift, and rotation.",
+    format: (value) => value.toFixed(1),
+  },
     ],
   },
   {
