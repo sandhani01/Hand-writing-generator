@@ -19,85 +19,89 @@ type DemoSlide = {
 
 const DEMO_THEME_STYLES = [
   {
-    "--demo-accent": "#24b7aa",
-    "--demo-accent-soft": "rgba(36, 183, 170, 0.14)",
-    "--demo-accent-strong": "#7be3d9",
+    "--demo-accent": "#bbf7d0",
+    "--demo-accent-soft": "rgba(187, 247, 208, 0.12)",
+    "--demo-accent-strong": "#4ade80",
   },
   {
-    "--demo-accent": "#d8902f",
-    "--demo-accent-soft": "rgba(216, 144, 47, 0.14)",
-    "--demo-accent-strong": "#f1c980",
+    "--demo-accent": "#4ade80",
+    "--demo-accent-soft": "rgba(74, 222, 128, 0.12)",
+    "--demo-accent-strong": "#22c55e",
   },
   {
-    "--demo-accent": "#4f8cff",
-    "--demo-accent-soft": "rgba(79, 140, 255, 0.14)",
-    "--demo-accent-strong": "#a9c7ff",
+    "--demo-accent": "#16a34a",
+    "--demo-accent-soft": "rgba(22, 163, 74, 0.12)",
+    "--demo-accent-strong": "#86efac",
   },
   {
-    "--demo-accent": "#dd6f9e",
-    "--demo-accent-soft": "rgba(221, 111, 158, 0.14)",
-    "--demo-accent-strong": "#f2abc8",
+    "--demo-accent": "#15803d",
+    "--demo-accent-soft": "rgba(21, 128, 61, 0.12)",
+    "--demo-accent-strong": "#4ade80",
   },
   {
-    "--demo-accent": "#8d78f6",
-    "--demo-accent-soft": "rgba(141, 120, 246, 0.14)",
-    "--demo-accent-strong": "#c8bcff",
+    "--demo-accent": "#064e3b",
+    "--demo-accent-soft": "rgba(6, 78, 59, 0.15)",
+    "--demo-accent-strong": "#34d399",
   },
 ] as const;
+
+ 
 
 const DEMO_SLIDES: DemoSlide[] = [
   {
     step: "01",
     title: "Print Grids",
     tone: "Print Grids",
-    imagePath: "/demo/01-Create Datasets.png",
+    imagePath: "/demo/01-Print Grid.png",
     imageAlt: "Print Grids",
     description:
-      "Print Grids as your first step",
+      "Start by printing the grid sheets that will be used for writing.",
     tips: [
-      "Download the Grids PDF",
-      "Print the Grids in Color or Black & White",
-      "Ensure the Grid lines are Strong without fading",
+      "Download the grid PDF before printing.",
+      "Print in color or black & white based on your preference.",
+      "Ensure grid lines are sharp and clearly visible.",
     ],
   },
   {
     step: "02",
-    title: "Crop Dataset",
-    tone: "Crop Dataset",
-    imagePath: "/demo/02-Crop Dataset.png",
-    imageAlt: "Crop Dataset section demo screenshot",
+    title: "Write Letters in the Grid",
+    tone: "Write Letters in the Grid",
+    imagePath: "/demo/02-Write Letters in the Grid.png",
+    imageAlt: "Write Letters in the Grid section demo screenshot",
     description:
-      "Crop the images (Easy-Peasy)",
+      "Write each letter neatly inside the printed grid boxes.",
     tips: [
-      "Use edit in your photos for crop(mobile)",
-      "Open advanced controls when you need deeper styling.",
-      "Character fixes let you move or resize one glyph without changing the whole style.",
+      "Write one character per grid box.",
+      "Keep letters aligned within the grid boundaries.",
+      "Maintain consistent size and spacing for better results.",
     ],
   },
   {
     step: "03",
-    title: "Upload Datasets",
-    tone: "Upload Datasets",
-    imagePath: "/demo/03-Upload Datasets.png",
+    title: "Crop Datasets",
+    tone: "Crop Datasets",
+    imagePath: "/demo/03-Crop Datasets.png",
     imageAlt: "Datasets section demo screenshot",
     description:
-      "Upload alphabet sheets, coding symbol sheets, and one background(Optional).",
+      "Crop each letter or symbol from the grid sheet to create datasets.",
     tips: [
-      "Simple mode: Only alphabet datasets needed.",
-      "Coding mode: Both alphabet and coding datasets needed.",
-      "Background datasets control the paper look behind the writing.",
+      "Use your phone or editor to crop each character clearly.",
+      "Avoid cutting off edges of letters while cropping.",
+      "Keep all cropped images uniform in size.",
     ],
   },
   {
     step: "04",
-    title: "Compose and Render",
-    tone: "Compose and Render",
-    imagePath: "/demo/04-Compose and Render.png",
-    imageAlt: "Compose and Render section demo screenshot",
+    title: "Upload Datasets",
+    tone: "Upload Datasets",
+    imagePath: "/demo/04-Upload Datasets.png",
+    imageAlt: "Upload Datasets section demo screenshot",
     description:
-      "Just insert the text you want in compose and Render !!",
+      "Upload your cropped datasets and enter the text you want to generate.",
     tips: [
-     
+      "Upload alphabet datasets (and coding datasets if needed).",
+      "Verify all files are correctly uploaded before proceeding.",
+      "Enter or paste the exact text you want to convert.",
     ],
   },
   {
@@ -107,11 +111,11 @@ const DEMO_SLIDES: DemoSlide[] = [
     imagePath: "/demo/05-Preview and Download.png",
     imageAlt: "Preview and Download section demo screenshot",
     description:
-      "Once the Compose and Render looks right, Preview and Download the PNG and reuse that exact render without generating it again.",
+      "Preview the generated output and download it as an image.",
     tips: [
-      "Preview and Download preserves the current rendered page exactly as shown.",
-      "Recent renders make it easy to revisit the last few exports.",
-      "This is the final step for assignments, notes, and presentation shots.",
+      "Check the preview to ensure everything looks correct.",
+      "Download the final output as a PNG file.",
+      "Save or reuse the generated image without reprocessing.",
     ],
   },
 ];
@@ -162,6 +166,11 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
        
 
         <section className="demo-stage" style={activeThemeStyle}>
+          <div 
+            className="demo-progress-bar" 
+            style={{ width: `${((activeIndex + 1) / DEMO_SLIDES.length) * 100}%` }} 
+            aria-hidden="true"
+          />
           <div className="demo-stage__top">
             <div className="demo-stage__meta">
               <span className="demo-stage__step">{activeSlide.step}</span>
