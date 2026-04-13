@@ -32,99 +32,95 @@ export function AppHeader({
   return (
     <header className="app-header">
       <div className="app-header__brand">
-        <div className="app-header__logo">
+        <div className="app-header__logo-group" onClick={onRefreshLibrary} title="Refresh Workspace">
           <div className="app-header__logo-mark" aria-hidden="true" />
-     
+          <span className="app-header__brand-name">Handwritten Notes</span>
         </div>
-        <div className="app-header__title-row">
-          <h1 className="app-header__title" id="app-page-title">
-            Create handwritten pages
-          </h1>
-          <span
-            className={`mode-badge ${isCodingMode ? "mode-badge--coding" : ""}`}
-          >
-            {isCodingMode ? "Coding" : "Simple"}
-          </span>
-        </div>
-        <p className="app-header__lede" id="app-page-desc">
-          Upload your handwriting samples, compose your text, and download beautifully rendered pages.
-        </p>
+        <div className="app-header__separator" aria-hidden="true" />
+        <span className={`mode-badge ${isCodingMode ? "mode-badge--coding" : ""}`}>
+          {isCodingMode ? "Coding" : "Simple"}
+        </span>
       </div>
+
       <nav className="app-header__toolbar" aria-label="Workspace actions">
-        <div className="app-header__user-section">
-          <span className="user-chip" title={userEmail}>
-            <span className="user-chip__avatar">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M20 21a8 8 0 1 0-16 0" />
-              </svg>
-            </span>
-            <span className="user-chip__email">{userEmail}</span>
-          </span>
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onLogout}>
-            Sign out
-          </button>
-        </div>
-        <div className="app-header__actions">
+        <div className="app-header__actions-group">
           <button
             type="button"
-            className="btn btn--primary btn--sm"
+            className="btn btn--primary btn--render"
             onClick={onRender}
             disabled={!canRender || isRendering}
             aria-busy={isRendering}
-            style={{ marginRight: '0.4rem' }}
           >
             {isRendering ? (
               <>
                 <svg className="btn__icon btn__icon--spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
-                Rendering
+                <span>Rendering</span>
               </>
-            ) : "Render page"}
+            ) : (
+              <>
+                <svg className="btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14" />
+                  <path d="M12 5l7 7-7 7" />
+                </svg>
+                <span>Render page</span>
+              </>
+            )}
           </button>
-          <div className="app-header__divider" aria-hidden="true" />
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-          <button
-            type="button"
-            className="btn btn--ghost btn--icon"
-            onClick={onRefreshLibrary}
-            disabled={isLoadingDatasets}
-            title={isLoadingDatasets ? "Refreshing..." : "Refresh datasets"}
-            aria-label="Refresh datasets"
-          >
-            <svg className={`btn__icon ${isLoadingDatasets ? "btn__icon--spin" : ""}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-              <path d="M16 16h5v5" />
-            </svg>
-            <span className="btn__label">{isLoadingDatasets ? "Refreshing" : "Refresh"}</span>
-          </button>
-          <button 
-            type="button" 
-            className="btn btn--ghost btn--icon" 
-            onClick={onResetWorkspace}
-            title="Reset workspace"
-            aria-label="Reset workspace"
-          >
-            <svg className="btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-            <span className="btn__label">Reset</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost btn--icon"
-            onClick={onChangeAssignmentType}
-            title="Change assignment type"
-            aria-label="Change assignment type"
-          >
-            <svg className="btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-            <span className="btn__label">Back</span>
+
+          <div className="toolbar-group">
+            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+            <div className="toolbar-group__divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="btn btn--toolbar"
+              onClick={onRefreshLibrary}
+              disabled={isLoadingDatasets}
+              title="Refresh datasets"
+            >
+              <svg className={`btn__icon ${isLoadingDatasets ? "btn__icon--spin" : ""}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M16 16h5v5" />
+              </svg>
+            </button>
+            <button 
+              type="button" 
+              className="btn btn--toolbar" 
+              onClick={onResetWorkspace}
+              title="Reset workspace"
+            >
+              <svg className="btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="btn btn--toolbar"
+              onClick={onChangeAssignmentType}
+              title="Back to mode selection"
+            >
+              <svg className="btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="app-header__user-group">
+          <div className="user-chip" title={userEmail}>
+            <span className="user-chip__email">{userEmail}</span>
+          </div>
+          <button type="button" className="btn btn--logout" onClick={onLogout}>
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" x2="9" y1="12" y2="12" />
+              </svg>
+              <span>Sign out</span>
           </button>
         </div>
       </nav>

@@ -23,6 +23,7 @@ import { DemoTour } from "./components/DemoTour";
 import { PreviewSection } from "./components/PreviewSection";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { TuningSection } from "./components/TuningSection";
+import { ImportConfigModal } from "./components/ImportConfigModal";
 import {
   logoutSupabaseSession,
   refreshSupabaseSession,
@@ -200,6 +201,7 @@ export default function App() {
   const [busyBackgroundId, setBusyBackgroundId] = useState<string | null>(null);
   const [busyRenderId, setBusyRenderId] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const workspaceBootKeyRef = useRef<string | null>(null);
 
   const handleCopyConfig = useCallback(() => {
@@ -212,20 +214,7 @@ export default function App() {
   }, [options]);
 
   const handleApplyConfig = useCallback(() => {
-    const input = prompt(
-      "Paste your fine-tuning configuration JSON here to apply it:"
-    );
-    if (!input) return;
-
-    try {
-      const parsed = JSON.parse(input);
-      const normalized = normalizeRenderOptions(parsed);
-      setOptions(normalized);
-    } catch (error) {
-      alert(
-        "Could not apply configuration. Please ensure you pasted a valid JSON string."
-      );
-    }
+    setIsImportModalOpen(true);
   }, []);
 
   const selectedRender = useMemo(
@@ -1713,6 +1702,13 @@ export default function App() {
           onDeleteRender={(renderId) => void handleDeleteRender(renderId)}
         />
       </main>
+
+      <ImportConfigModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onApply={(newOptions) => setOptions(newOptions)}
+        normalizeRenderOptions={normalizeRenderOptions}
+      />
     </div>
   );
 }
