@@ -162,7 +162,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
             <div className="mode-example" aria-label="Example alphabet grid preview">
               <div className="mode-example__head">
                 <div className="mode-example__title">
-                  DRAW THIS BEFOR YOU START(ALPHABETS)
+                  MAKE THIS BEFORE YOU START(ALPHABETS)
                 </div>
                 <button
                   type="button"
@@ -226,7 +226,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
             <div className="mode-example" aria-label="Example coding symbols preview">
               <div className="mode-example__head">
                 <div className="mode-example__title">
-                  DRAW THIS BEFOR YOU START(SYMBOLS)
+                  MAKE THIS BEFORE YOU START(SYMBOLS)
                 </div>
                 <button
                   type="button"
