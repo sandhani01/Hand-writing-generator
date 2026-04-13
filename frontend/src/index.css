@@ -3004,52 +3004,93 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
     padding: 0.4rem 0.6rem;
     gap: 0.5rem;
     height: 3.5rem;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  /* Branding: Lock to left */
+  .app-header__brand {
+    flex: 0 0 auto !important;
+    width: fit-content !important;
+    gap: 0;
   }
 
   .app-header__brand-name,
   .app-header__separator,
   .mode-badge,
-  .app-header__user-group,
+  .user-chip,
+  .btn--logout span,
   .btn--render span {
-    display: none;
+    display: none !important;
   }
 
-  .app-header__brand {
-    gap: 0;
-    flex: 0 0 auto;
-  }
-
+  /* Toolbar: Take all middle space, push all items to far right */
   .app-header__toolbar {
-    flex: 1;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 0.2rem !important;
     min-width: 0;
-    justify-content: flex-end;
   }
 
   .app-header__actions-group {
-    gap: 0.5rem;
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .btn--render {
-    padding: 0;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: var(--radius-pill);
-    justify-content: center;
-    order: 4; /* Move to end of actions */
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.2rem !important;
   }
 
   .toolbar-group {
-    gap: 0.25rem;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0.2rem !important;
+    padding: 0;
+    margin: 0;
     background: transparent;
     border: none;
-    padding: 0;
   }
 
-  .btn--toolbar {
-    width: 2.25rem;
-    height: 2.25rem;
+  .app-header__user-group {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    order: 10 !important;
+    margin-left: 0.1rem;
+    flex-shrink: 0;
+  }
+
+  /* Standardized Mobile Action Circle */
+  .btn--toolbar,
+  .btn--logout,
+  .btn--render,
+  .theme-toggle {
+    width: 2.1rem !important;
+    height: 2.1rem !important;
+    min-width: 2.1rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    border-radius: 50% !important;
+    background: var(--bg-muted) !important;
+    border: 1px solid var(--line) !important;
+  }
+
+  .btn--render {
+    background: var(--accent) !important;
+    border-color: var(--accent-strong) !important;
+    color: white !important;
+    order: 4 !important;
   }
 }
 
