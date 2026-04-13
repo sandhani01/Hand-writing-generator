@@ -114,11 +114,13 @@ def build_frontend_default_options():
         "descenderShift": 0.0,
         "digitScale": 1.0,
         "symbolScale": 1.0,
-        "commaScale": 1.0,
+        "commaScale": 0.77,
         "commaShift": 0.0,
         "dotScale": 1.0,
+        "heightMultiplier": 1.10,
+        "widthMultiplier": 1.0,
         "charOverrides": {},
-    }
+      }
 
 
 def build_frontend_features():
@@ -311,6 +313,12 @@ def build_render_config(options):
     cfg["margin_bottom"] = to_int(options.get("marginBottom"), cfg["margin_bottom"])
     cfg["render_scale_multiplier"] = to_float(
         options.get("overallScale"), cfg["render_scale_multiplier"]
+    )
+    cfg["height_multiplier"] = to_float(
+        options.get("heightMultiplier"), cfg.get("height_multiplier", 1.0)
+    )
+    cfg["width_multiplier"] = to_float(
+        options.get("widthMultiplier"), cfg.get("width_multiplier", 1.0)
     )
 
     jitter = to_float(options.get("jitter"), 0.0)

@@ -1184,6 +1184,14 @@ export default function App() {
       clearPreview();
       setSelectedRenderId(renderPayload.id);
       await loadRenders();
+
+      // Smoothly scroll to preview section on mobile/desktop after initiating render
+      setTimeout(() => {
+        document.getElementById("preview-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
     } catch (error) {
       setRenderError(getErrorMessage(error, "Render failed."));
     } finally {

@@ -19,8 +19,8 @@ DEFAULT_CFG = {
 
     "margin_left": 100,
     "margin_top": 180,
-    "margin_right": 30,
-    "margin_bottom": 180,
+    "margin_right": 10,
+    "margin_bottom": 40,
 
     "backgrounds_dir": str(PROJECT_DIR / "backgrounds"),
     "background_file": "ruled.png",
@@ -28,19 +28,19 @@ DEFAULT_CFG = {
 
     "glyphs_dir": str(PROJECT_DIR / "glyph_sets"),
     "glyph_size": 44,
-    "render_scale_multiplier": 1.42,
+    "render_scale_multiplier": 1.67,
 
-    "line_height": 82,
+    "line_height": 57,
 
     "char_spacing": -1,
     "word_spacing": 26,
     "word_spacing_jitter": 3,
     "line_drift_per_word": 0.18,
-    "baseline_jitter": 0.25,
+    "baseline_jitter": 0.7,
 
     "rotation_range": (-2.0, 2.0),
 
-    "ink_color": (15, 30, 80),
+    "ink_color": (20, 41, 107),
     "page_color": (252, 248, 235),
 
     "pressure_min": 0.90,
@@ -48,6 +48,8 @@ DEFAULT_CFG = {
     "stroke_gain": 1.28,
     "edge_roughness": 0.0,
     "texture_blend": 0.08,
+    "height_multiplier": 1.10,
+    "width_multiplier": 1.0,
     "metric_overrides": {},
 }
 
@@ -387,7 +389,12 @@ def estimate_word_width(word, cfg):
         metrics = get_char_metrics(c, cfg)
         min_scale, max_scale = metrics["scale_range"]
         scale = ((min_scale + max_scale) / 2) * cfg["render_scale_multiplier"]
-        char_width = cfg["glyph_size"] * scale * metrics["width_factor"]
+        char_width = (
+            cfg["glyph_size"] 
+            * scale 
+            * metrics["width_factor"]
+            * cfg.get("width_multiplier", 1.0)
+        )
         width += (
             char_width
             + cfg["char_spacing"]
@@ -527,9 +534,11 @@ def roughen_alpha(alpha, roughness):
 
 def prepare_glyph(glyph_gray, ink, scale, angle, pressure, cfg):
 
+    scale_y = scale * cfg.get("height_multiplier", 1.0)
+    scale_x = scale * cfg.get("width_multiplier", 1.0)
     new_size = (
-        max(1, int(glyph_gray.width * scale)),
-        max(1, int(glyph_gray.height * scale))
+        max(1, int(glyph_gray.width * scale_x)),
+        max(1, int(glyph_gray.height * scale_y))
     )
 
     glyph = glyph_gray.resize(new_size, Image.LANCZOS)

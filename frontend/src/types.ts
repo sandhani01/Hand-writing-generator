@@ -34,6 +34,8 @@ export type RenderOptions = {
   commaScale: number;
   commaShift: number;
   dotScale: number;
+  heightMultiplier: number;
+  widthMultiplier: number;
   charOverrides: Record<string, CharacterOverride>;
 };
 

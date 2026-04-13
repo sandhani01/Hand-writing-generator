@@ -45,7 +45,7 @@ export function PreviewSection({
   onDeleteRender,
 }: Props) {
   return (
-    <aside className="layout__preview" aria-label="Preview and export">
+    <aside id="preview-section" className="layout__preview" aria-label="Preview and export">
       <article className="surface surface--preview">
         <WorkflowSection
           step="04"
