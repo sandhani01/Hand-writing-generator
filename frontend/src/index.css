@@ -78,8 +78,8 @@ html {
   /* Section-specific color rails - harmonious palette */
   --section-compose: #5fa8d3;
   --section-compose-dim: rgba(95, 168, 211, 0.12);
-  --section-tuning: #e0a458;
-  --section-tuning-dim: rgba(224, 164, 88, 0.12);
+  --section-tuning: #3d7a5c;
+  --section-tuning-dim: rgba(61, 122, 92, 0.12);
   --section-datasets: #a78bda;
   --section-datasets-dim: rgba(167, 139, 218, 0.12);
   --section-preview: #3d7a5c;
@@ -144,8 +144,8 @@ html[data-theme="light"] {
   
   --section-compose: #0284c7;
   --section-compose-dim: rgba(2, 132, 199, 0.08);
-  --section-tuning: #d97706;
-  --section-tuning-dim: rgba(217, 119, 6, 0.08);
+  --section-tuning: #3d7a5c;
+  --section-tuning-dim: rgba(61, 122, 92, 0.08);
   --section-datasets: #7c3aed;
   --section-datasets-dim: rgba(124, 58, 237, 0.08);
   --section-preview: #3d7a5c;
