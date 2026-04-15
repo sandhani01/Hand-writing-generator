@@ -164,6 +164,7 @@ export default function App() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showEmergencyLogout, setShowEmergencyLogout] = useState(false);
 
   const [availableCounts, setAvailableCounts] = useState<UploadCounts>(EMPTY_COUNTS);
   const [datasets, setDatasets] = useState<DatasetRecord[]>([]);
@@ -703,6 +704,12 @@ export default function App() {
         }, WORKSPACE_BOOT_SOFT_RELEASE_MS);
       }
 
+      const emergencyTimerId = window.setTimeout(() => {
+        if (!cancelled) {
+          setShowEmergencyLogout(true);
+        }
+      }, 10000);
+
       try {
         await bootstrapAuthenticatedWorkspace(
           authToken,
@@ -727,11 +734,13 @@ export default function App() {
           );
         }
       } finally {
+        window.clearTimeout(emergencyTimerId);
         if (releaseLoaderId !== null) {
           window.clearTimeout(releaseLoaderId);
         }
         if (!cancelled) {
           setIsAuthChecking(false);
+          setShowEmergencyLogout(false);
         }
       }
     };
@@ -898,11 +907,11 @@ export default function App() {
     formData.append("type", type);
 
     try {
-      const response = await fetch(apiUrl("/api/v1/datasets/upload"), {
+      const response = await fetchWithTimeout(apiUrl("/api/v1/datasets/upload"), {
         method: "POST",
         headers: authHeaders(),
         body: formData,
-      });
+      }, 60000); // Higher timeout for heavy uploads
       let data: DatasetRecord | ApiError | null = null;
       try {
         data = (await response.json()) as DatasetRecord | ApiError;
@@ -950,11 +959,11 @@ export default function App() {
     formData.append("background", file);
 
     try {
-      const response = await fetch(apiUrl("/api/v1/backgrounds/upload"), {
+      const response = await fetchWithTimeout(apiUrl("/api/v1/backgrounds/upload"), {
         method: "POST",
         headers: authHeaders(),
         body: formData,
-      });
+      }, 45000);
       let data: BackgroundRecord | ApiError | null = null;
       try {
         data = (await response.json()) as BackgroundRecord | ApiError;
@@ -988,14 +997,14 @@ export default function App() {
     setBusyDatasetId(datasetId);
     setUploadError(null);
     try {
-      const response = await fetch(apiUrl(`/api/v1/datasets/${datasetId}`), {
+      const response = await fetchWithTimeout(apiUrl(`/api/v1/datasets/${datasetId}`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...authHeaders(),
         },
         body: JSON.stringify({ display_name: displayName }),
-      });
+      }, 15000);
       let data: DatasetRecord | ApiError | null = null;
       try {
         data = (await response.json()) as DatasetRecord | ApiError;
@@ -1028,10 +1037,10 @@ export default function App() {
     setBusyDatasetId(datasetId);
     setUploadError(null);
     try {
-      const response = await fetch(apiUrl(`/api/v1/datasets/${datasetId}`), {
+      const response = await fetchWithTimeout(apiUrl(`/api/v1/datasets/${datasetId}`), {
         method: "DELETE",
         headers: authHeaders(),
-      });
+      }, 15000);
       let data: ApiError | null = null;
       try {
         data = (await response.json()) as ApiError;
@@ -1064,14 +1073,14 @@ export default function App() {
     setBusyBackgroundId(backgroundId);
     setUploadError(null);
     try {
-      const response = await fetch(apiUrl("/api/v1/backgrounds/select"), {
+      const response = await fetchWithTimeout(apiUrl("/api/v1/backgrounds/select"), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...authHeaders(),
         },
         body: JSON.stringify({ background_id: backgroundId }),
-      });
+      }, 15000);
       let data: BackgroundListResponse | ApiError | null = null;
       try {
         data = (await response.json()) as BackgroundListResponse | ApiError;
@@ -1106,12 +1115,13 @@ export default function App() {
     setBusyBackgroundId(backgroundId);
     setUploadError(null);
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         apiUrl(`/api/v1/backgrounds/${backgroundId}`),
         {
           method: "DELETE",
           headers: authHeaders(),
-        }
+        },
+        15000
       );
       let data: ApiError | null = null;
       try {
@@ -1152,14 +1162,14 @@ export default function App() {
     setPreviewError(null);
 
     try {
-      const renderResponse = await fetch(apiUrl("/api/v1/renders"), {
+      const renderResponse = await fetchWithTimeout(apiUrl("/api/v1/renders"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...authHeaders(),
         },
         body: JSON.stringify({ text, options }),
-      });
+      }, 20000);
 
       let renderPayload: RenderJobResponse | ApiError | null = null;
       try {
@@ -1207,9 +1217,9 @@ export default function App() {
   const handleDownloadRender = async (renderId: string) => {
     setBusyRenderId(renderId);
     try {
-      const response = await fetch(apiUrl(`/api/v1/renders/${renderId}/file`), {
+      const response = await fetchWithTimeout(apiUrl(`/api/v1/renders/${renderId}/file`), {
         headers: authHeaders(),
-      });
+      }, 30000);
 
       if (response.status === 401) {
         handleExpiredSession("Please sign in again.");
@@ -1240,10 +1250,10 @@ export default function App() {
   const handleDeleteRender = async (renderId: string) => {
     setBusyRenderId(renderId);
     try {
-      const response = await fetch(apiUrl(`/api/v1/renders/${renderId}`), {
+      const response = await fetchWithTimeout(apiUrl(`/api/v1/renders/${renderId}`), {
         method: "DELETE",
         headers: authHeaders(),
-      });
+      }, 15000);
 
       if (response.status === 401) {
         handleExpiredSession("Please sign in again.");
@@ -1357,10 +1367,10 @@ export default function App() {
     }
 
     try {
-      await fetch(apiUrl("/api/v1/auth/logout"), {
+      void fetchWithTimeout(apiUrl("/api/v1/auth/logout"), {
         method: "POST",
         headers: authHeaders(),
-      });
+      }, 5000).catch(() => {});
     } catch {
       // Ignore workspace cleanup failures and still rotate the client workspace id.
     }
@@ -1451,25 +1461,8 @@ export default function App() {
   };
 
   const handleLogout = useCallback(async () => {
-    if (authToken && workspaceSessionId) {
-      try {
-        await fetch(apiUrl("/api/v1/auth/logout"), {
-          method: "POST",
-          headers: authHeaders(),
-        });
-      } catch {
-        // Ignore backend cleanup failures and still clear local state.
-      }
-    }
-
-    if (authToken && isHostedAuth) {
-      try {
-        await logoutSupabaseSession(authToken);
-      } catch {
-        // Ignore provider logout failures and still clear local state.
-      }
-    }
-
+    // 1. Optimistically clear local state immediately
+    const token = authToken;
     clearAuthState();
     setAuthError(null);
     setIsDemoOpen(false);
@@ -1478,9 +1471,27 @@ export default function App() {
     setUploadError(null);
     setRenderError(null);
     setPreviewError(null);
+
+    // 2. Trigger backend cleanup in background with timeout
+    if (token && workspaceSessionId) {
+      void fetchWithTimeout(apiUrl("/api/v1/auth/logout"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Workspace-Session": workspaceSessionId,
+        },
+      }, 5000).catch(() => {
+        // Silent catch for background cleanup
+      });
+    }
+
+    if (token && isHostedAuth) {
+      void logoutSupabaseSession(token).catch(() => {
+        // Silent catch for background cleanup
+      });
+    }
   }, [
     apiUrl,
-    authHeaders,
     authToken,
     clearAuthState,
     isHostedAuth,
@@ -1543,6 +1554,17 @@ export default function App() {
                   This usually takes just a moment.
                 </p>
               </div>
+              {showEmergencyLogout && (
+                <div className="workspace-loader__emergency">
+                  <button 
+                    type="button" 
+                    className="btn btn--outline btn--compact"
+                    onClick={handleLogout}
+                  >
+                    Stuck? Sign out anyway
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="workspace-loader__grid" aria-hidden>

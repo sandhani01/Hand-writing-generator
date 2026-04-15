@@ -452,6 +452,17 @@ img {
   line-height: 1.55;
 }
 
+.workspace-loader__emergency {
+  margin-left: auto;
+  padding-left: 1rem;
+  animation: slide-in-right 0.4s var(--ease-out);
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 .workspace-loader__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
