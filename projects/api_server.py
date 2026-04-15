@@ -205,10 +205,7 @@ def ensure_datasets():
                 grid_rows=extractor.CODING_GRID_ROWS,
                 grid_cols=extractor.CODING_GRID_COLS,
                 labels=labels,
-                grid_mode="lines",
                 skip_morph=True,
-                use_bounds=True,
-                center_symbols=True,
                 clean_symbols=True,
                 threshold_mode="auto",
             )
@@ -285,10 +282,7 @@ def run_extraction(image_path, glyph_type):
             grid_rows=extractor.CODING_GRID_ROWS,
             grid_cols=extractor.CODING_GRID_COLS,
             labels=labels,
-            grid_mode="lines",
             skip_morph=True,
-            use_bounds=True,
-            center_symbols=True,
             clean_symbols=True,
             threshold_mode="auto",
         )

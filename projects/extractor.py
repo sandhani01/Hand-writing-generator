@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import cv2
+import cv2.aruco
 import numpy as np
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -181,35 +182,6 @@ def crop_to_content(roi, pad=4):
     return roi[y1:y2, x1:x2]
 
 
-def cluster_axis(values, groups):
-    samples = np.array(values, dtype=np.float32).reshape(-1, 1)
-
-    if len(samples) < groups:
-        raise ValueError(
-            f"Not enough components to cluster into {groups} groups."
-        )
-
-    cv2.setRNGSeed(42)
-    criteria = (
-        cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
-        100,
-        0.2,
-    )
-    _, _, centers = cv2.kmeans(
-        samples,
-        groups,
-        None,
-        criteria,
-        20,
-        cv2.KMEANS_PP_CENTERS,
-    )
-
-    return sorted(float(center[0]) for center in centers)
-
-
-def nearest_index(value, centers):
-    distances = [abs(value - center) for center in centers]
-    return int(np.argmin(distances))
 
 
 def gather_components(binary):
@@ -231,29 +203,12 @@ def gather_components(binary):
     return components
 
 
-def estimate_grid_centers(components, grid_rows, grid_cols):
-    primary = [box for box in components if box["area"] > PRIMARY_COMPONENT_AREA]
+def remove_line_mask(binary, line_mask):
+    if line_mask is None:
+        return binary
 
-    if len(primary) < grid_rows * grid_cols:
-        raise RuntimeError(
-            f"Not enough primary components to estimate the {grid_rows}x{grid_cols} layout."
-        )
-
-    col_centers = cluster_axis([box["cx"] for box in primary], grid_cols)
-    row_centers = cluster_axis([box["cy"] for box in primary], grid_rows)
-
-    return row_centers, col_centers
-
-
-def assign_components_to_cells(components, row_centers, col_centers, grid_rows, grid_cols):
-    cells = {(row, col): [] for row in range(grid_rows) for col in range(grid_cols)}
-
-    for box in components:
-        row = nearest_index(box["cy"], row_centers)
-        col = nearest_index(box["cx"], col_centers)
-        cells[(row, col)].append(box)
-
-    return cells
+    inverted = cv2.bitwise_not(line_mask)
+    return cv2.bitwise_and(binary, inverted)
 
 
 def filter_cell_components(cell_boxes):
@@ -364,7 +319,8 @@ def normalize_input_for_extraction(image):
 
 def preprocess_image(image, skip_open=False, mode="adaptive"):
     gray = normalize_input_for_extraction(image)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    # Reduced blur from (5,5) to (3,3) for higher precision extraction
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
 
     if mode == "otsu":
         _, thresh = cv2.threshold(
@@ -380,8 +336,8 @@ def preprocess_image(image, skip_open=False, mode="adaptive"):
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY_INV,
-        11,
-        2,
+        21, # Increased block size for high-res
+        4,  # Adjusted constant for high-res
     )
 
     return apply_post_threshold_cleanup(thresh, skip_open=skip_open)
@@ -404,264 +360,6 @@ def choose_threshold_mode(image, skip_open, grid_rows, grid_cols):
     return adaptive, "adaptive"
 
 
-def cluster_indices(indices, max_gap=2):
-    if len(indices) == 0:
-        return []
-
-    groups = [[int(indices[0])]]
-
-    for idx in indices[1:]:
-        idx = int(idx)
-        if idx - groups[-1][-1] <= max_gap:
-            groups[-1].append(idx)
-        else:
-            groups.append([idx])
-
-    return [int(round(np.mean(group))) for group in groups]
-
-
-def cluster_line_centers(centers, required):
-    centers = sorted(int(c) for c in centers)
-
-    if len(centers) == required:
-        return centers
-
-    if len(centers) >= required:
-        return [int(round(c)) for c in cluster_axis(centers, required)]
-
-    return centers
-
-
-def detect_grid_lines(binary, grid_rows, grid_cols):
-    height, width = binary.shape[:2]
-
-    horiz_len = max(10, int(width / grid_cols))
-    vert_len = max(10, int(height / grid_rows))
-
-    horiz_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (horiz_len, 1))
-    vert_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, vert_len))
-
-    horiz = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horiz_kernel)
-    vert = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vert_kernel)
-
-    line_mask = cv2.bitwise_or(horiz, vert)
-    _, line_mask = cv2.threshold(line_mask, 1, 255, cv2.THRESH_BINARY)
-
-    row_scores = np.sum(horiz > 0, axis=1)
-    col_scores = np.sum(vert > 0, axis=0)
-
-    if row_scores.size == 0 or col_scores.size == 0:
-        return None, None, line_mask
-
-    # Real drawn grid lines should span a large chunk of the sheet.
-    if np.max(row_scores) < width * 0.45 or np.max(col_scores) < height * 0.45:
-        return None, None, line_mask
-
-    row_thresh = max(10, int(0.6 * np.max(row_scores)))
-    col_thresh = max(10, int(0.6 * np.max(col_scores)))
-
-    row_indices = np.where(row_scores >= row_thresh)[0]
-    col_indices = np.where(col_scores >= col_thresh)[0]
-
-    row_lines = cluster_indices(row_indices)
-    col_lines = cluster_indices(col_indices)
-
-    row_lines = cluster_line_centers(row_lines, grid_rows + 1)
-    col_lines = cluster_line_centers(col_lines, grid_cols + 1)
-
-    if len(row_lines) != grid_rows + 1 or len(col_lines) != grid_cols + 1:
-        return None, None, line_mask
-
-    return sorted(row_lines), sorted(col_lines), line_mask
-
-
-def remove_line_mask(binary, line_mask):
-    if line_mask is None:
-        return binary
-
-    inverted = cv2.bitwise_not(line_mask)
-    return cv2.bitwise_and(binary, inverted)
-
-
-def centers_to_bounds(centers, limit, expand_ratio=0.12):
-    centers = [int(round(c)) for c in centers]
-    centers = sorted(centers)
-
-    bounds = []
-    for i, center in enumerate(centers):
-        if i == 0:
-            start = 0
-        else:
-            start = int(round((centers[i - 1] + center) / 2.0))
-
-        if i == len(centers) - 1:
-            end = limit
-        else:
-            end = int(round((center + centers[i + 1]) / 2.0))
-
-        span = max(1, end - start)
-        grow = int(round(span * expand_ratio))
-        start = max(0, start - grow)
-        end = min(limit, end + grow)
-
-        bounds.append((start, end))
-
-    return bounds
-
-
-def compute_grid_bounds(binary, trim_ratio=0.01):
-    coords = cv2.findNonZero(binary)
-
-    if coords is None:
-        raise RuntimeError("No ink found in image.")
-
-    x, y, w, h = cv2.boundingRect(coords)
-
-    trim_x = int(round(w * trim_ratio))
-    trim_y = int(round(h * trim_ratio))
-
-    x1 = min(binary.shape[1] - 1, max(0, x + trim_x))
-    y1 = min(binary.shape[0] - 1, max(0, y + trim_y))
-    x2 = min(binary.shape[1], max(x1 + 1, x + w - trim_x))
-    y2 = min(binary.shape[0], max(y1 + 1, y + h - trim_y))
-
-    return x1, y1, x2, y2
-
-
-def build_fixed_ordered_cells(
-    binary,
-    labels,
-    grid_rows,
-    grid_cols,
-    inset_ratio=0.02,
-    pad=4,
-):
-    ordered = []
-    x1, y1, x2, y2 = compute_grid_bounds(binary)
-
-    grid_w = x2 - x1
-    grid_h = y2 - y1
-
-    cell_w = grid_w / float(grid_cols)
-    cell_h = grid_h / float(grid_rows)
-
-    for row in range(grid_rows):
-        for col in range(grid_cols):
-            label_index = row * grid_cols + col
-            if label_index >= len(labels):
-                break
-
-            char = labels[label_index]
-            if char == "":
-                continue
-
-            cell_x1 = int(round(x1 + col * cell_w))
-            cell_x2 = int(round(x1 + (col + 1) * cell_w))
-            cell_y1 = int(round(y1 + row * cell_h))
-            cell_y2 = int(round(y1 + (row + 1) * cell_h))
-
-            inset_x = int(round((cell_x2 - cell_x1) * inset_ratio))
-            inset_y = int(round((cell_y2 - cell_y1) * inset_ratio))
-
-            roi_x1 = min(cell_x2 - 1, cell_x1 + inset_x)
-            roi_x2 = max(roi_x1 + 1, cell_x2 - inset_x)
-            roi_y1 = min(cell_y2 - 1, cell_y1 + inset_y)
-            roi_y2 = max(roi_y1 + 1, cell_y2 - inset_y)
-
-            roi = binary[roi_y1:roi_y2, roi_x1:roi_x2]
-            roi = crop_to_content(roi, pad=pad)
-            h, w = roi.shape[:2]
-
-            ordered.append((char, roi, w, h, row, col))
-
-    return ordered, (x1, y1, x2, y2)
-
-
-def build_center_bounds_cells(
-    binary,
-    labels,
-    row_centers,
-    col_centers,
-    inset_ratio=0.0,
-    pad=1,
-    expand_ratio=0.0,
-):
-    ordered = []
-    height, width = binary.shape[:2]
-
-    row_bounds = centers_to_bounds(row_centers, height, expand_ratio=expand_ratio)
-    col_bounds = centers_to_bounds(col_centers, width, expand_ratio=expand_ratio)
-
-    for row in range(len(row_bounds)):
-        for col in range(len(col_bounds)):
-            label_index = row * len(col_bounds) + col
-            if label_index >= len(labels):
-                break
-
-            char = labels[label_index]
-            if char == "":
-                continue
-
-            y1, y2 = row_bounds[row]
-            x1, x2 = col_bounds[col]
-
-            inset_x = int(round((x2 - x1) * inset_ratio))
-            inset_y = int(round((y2 - y1) * inset_ratio))
-
-            roi_x1 = min(x2 - 1, x1 + inset_x)
-            roi_x2 = max(roi_x1 + 1, x2 - inset_x)
-            roi_y1 = min(y2 - 1, y1 + inset_y)
-            roi_y2 = max(roi_y1 + 1, y2 - inset_y)
-
-            roi = binary[roi_y1:roi_y2, roi_x1:roi_x2]
-            roi = crop_to_content(roi, pad=pad)
-            h, w = roi.shape[:2]
-
-            ordered.append((char, roi, w, h, row, col))
-
-    return ordered, row_bounds, col_bounds
-
-
-def build_line_ordered_cells(
-    binary,
-    labels,
-    row_lines,
-    col_lines,
-    inset_ratio=0.02,
-    pad=4,
-):
-    ordered = []
-
-    for row in range(len(row_lines) - 1):
-        for col in range(len(col_lines) - 1):
-            label_index = row * (len(col_lines) - 1) + col
-            if label_index >= len(labels):
-                break
-
-            char = labels[label_index]
-            if char == "":
-                continue
-
-            cell_x1 = col_lines[col]
-            cell_x2 = col_lines[col + 1]
-            cell_y1 = row_lines[row]
-            cell_y2 = row_lines[row + 1]
-
-            inset_x = int(round((cell_x2 - cell_x1) * inset_ratio))
-            inset_y = int(round((cell_y2 - cell_y1) * inset_ratio))
-
-            roi_x1 = min(cell_x2 - 1, cell_x1 + inset_x)
-            roi_x2 = max(roi_x1 + 1, cell_x2 - inset_x)
-            roi_y1 = min(cell_y2 - 1, cell_y1 + inset_y)
-            roi_y2 = max(roi_y1 + 1, cell_y2 - inset_y)
-
-            roi = binary[roi_y1:roi_y2, roi_x1:roi_x2]
-            roi = crop_to_content(roi, pad=pad)
-            h, w = roi.shape[:2]
-
-            ordered.append((char, roi, w, h, row, col))
-
-    return ordered
 
 
 def compute_reference_height(heights):
@@ -692,21 +390,27 @@ def compute_group_reference_heights(ordered_cells):
     return reference_heights, global_reference
 
 
-def prepare_cells_for_normalization(ordered_cells, clean_symbols=False):
+def prepare_cells_for_normalization(ordered_cells, clean_symbols=True):
     prepared = []
 
     for char, roi, _, _, row, col in ordered_cells:
         group = glyph_group(char)
-        prepared_roi = roi
-
-        if clean_symbols and (group == "symbol" or char in "!@#%^&*()-+=[]{};:'\"<>/?\\|`"):
-            prepared_roi = clean_small_components(prepared_roi, min_area=4, ratio=0.08)
-            prepared_roi = crop_to_content(prepared_roi, pad=2)
+        
+        # 1. Edge-shaving: Catch slivers right at the cell boundary.
+        h_roi, w_roi = roi.shape[:2]
+        if h_roi > 6 and w_roi > 6:
+            roi = roi[2:-2, 2:-2]
+            
+        # 2. Component cleaning: Remove disconnected noise.
+        cleaning_ratio = 0.08 if group in ("upper", "lower_asc", "lower_desc", "lower_x") else 0.04
+        prepared_roi = clean_small_components(roi, min_area=3, ratio=cleaning_ratio)
+        prepared_roi = crop_to_content(prepared_roi, pad=2)
 
         h, w = prepared_roi.shape[:2]
         prepared.append((char, prepared_roi, w, h, row, col))
 
     return prepared
+
 
 
 def normalize_to_canvas(
@@ -735,7 +439,7 @@ def normalize_to_canvas(
     new_w = max(1, int(round(w * fit_scale)))
     new_h = max(1, int(round(h * fit_scale)))
 
-    interpolation = cv2.INTER_AREA if fit_scale < 1 else cv2.INTER_CUBIC
+    interpolation = cv2.INTER_LANCZOS4 if fit_scale < 1 else cv2.INTER_CUBIC
     resized = cv2.resize(roi, (new_w, new_h), interpolation=interpolation)
 
     xoff = max(0, (final_size - new_w) // 2)
@@ -996,56 +700,108 @@ def load_labels_from_file(path):
     return labels
 
 
-PERSPECTIVE_OUTPUT_SIZE = 800
+PERSPECTIVE_OUTPUT_SIZE = 2400
 
 
-def find_grid_contour(image):
-    """Find the largest square-ish quadrilateral contour (the printed grid border)."""
 
+
+def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT_4X4_50):
+    """
+    Find the grid border using 4 ArUco markers at the corners.
+    Implements a multi-pass search to handle bad lighting, shadows, and glares.
+    """
     if image.ndim == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray = image.copy()
 
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    thresh = cv2.adaptiveThreshold(
-        blur,
-        255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV,
-        11,
-        2,
-    )
+    aruco_dict = cv2.aruco.getPredefinedDictionary(dictionary_id)
+    
+    # 1. Setup Robust Parameters
+    parameters = cv2.aruco.DetectorParameters()
+    # Smaller step helps with uneven lighting/shadows across a single marker
+    parameters.adaptiveThreshWinSizeStep = 4 
+    # Catch markers even if they are right at the image edge
+    parameters.minDistanceToBorder = 0
+    # Allow slightly smaller markers in the frame
+    parameters.minMarkerPerimeterRate = 0.02
+    
+    detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
-    kernel = np.ones((3, 3), np.uint8)
-    thresh = cv2.dilate(thresh, kernel, iterations=1)
+    # 2. Multi-Pass Search Strategy
+    # We track the "best" result (most markers found) to report to the user if we fail.
+    global_best_ids = []
+    global_best_corners = None
+    
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    
+    # We expand the passes to handle noise (Blur) and low contrast (CLAHE)
+    passes = [
+        ("Standard", gray),
+        ("CLAHE (Local Contrast)", clahe.apply(gray)),
+        ("Denoised + CLAHE", clahe.apply(cv2.fastNlMeansDenoising(gray, None, 10, 7, 21))),
+        ("Blurred", cv2.GaussianBlur(gray, (3, 3), 0)),
+        ("Contrast-Stretch", cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)),
+    ]
 
-    contours, _ = cv2.findContours(
-        thresh,
-        cv2.RETR_EXTERNAL,
-        cv2.CHAIN_APPROX_SIMPLE,
-    )
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)
-    image_area = image.shape[0] * image.shape[1]
+    detected_anything = False
+    last_rejected = None
+    
+    for pass_name, search_img in passes:
+        corners, ids, rejected = detector.detectMarkers(search_img)
+        last_rejected = rejected
+        
+        if ids is not None:
+            detected_anything = True
+            found_ids = ids.flatten().tolist()
+            
+            # Keep track of the pass that found the MOST markers
+            if len(found_ids) > len(global_best_ids):
+                global_best_ids = found_ids
+                global_best_corners = corners
+            
+            if all(mid in found_ids for mid in marker_ids):
+                print(f"ArUco Detection SUCCESS during {pass_name} pass.")
+                # Select only the outermost corner for each of the 4 markers
+                # c[0] is the (4, 2) corner array. Corners are: 0:TL, 1:TR, 2:BR, 3:BL
+                return np.array([
+                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[0]][0][0], # TL marker's TL corner
+                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[1]][0][1], # TR marker's TR corner
+                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[2]][0][2], # BR marker's BR corner
+                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[3]][0][3], # BL marker's BL corner
+                ], dtype=np.float32)
+            else:
+                print(f"ArUco Pass {pass_name}: Found {found_ids}, missing: {[m for m in marker_ids if m not in found_ids]}")
+        else:
+            print(f"ArUco Pass {pass_name}: No markers detected.")
 
-    for contour in contours:
-        peri = cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
-
-        if len(approx) == 4:
-            area = cv2.contourArea(approx)
-            if area < image_area * 0.15:
-                continue
-
-            x, y, w, h = cv2.boundingRect(approx)
-            aspect = max(w, h) / max(min(w, h), 1)
-            if aspect < 1.4:
-                return approx.reshape(4, 2)
-
+    # If we reached here, we failed to find all 4 markers in a single pass
+    missing = [m for m in marker_ids if m not in global_best_ids]
+    
+    # Save a debug image for the user to troubleshoot
+    debug_save_path = "aruco_discovery_fail_debug.png"
+    debug_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    
+    # Draw successfully detected markers in green
+    if global_best_corners is not None:
+        cv2.aruco.drawDetectedMarkers(debug_img, global_best_corners, np.array(global_best_ids))
+    
+    # Draw rejected candidates in red (these are often the "missing" markers that were too blurry/dark)
+    if last_rejected is not None:
+        cv2.aruco.drawDetectedMarkers(debug_img, last_rejected, borderColor=(0, 0, 255))
+        
+    cv2.imwrite(debug_save_path, debug_img)
+    
     raise RuntimeError(
-        "Could not find the grid border in the image. "
-        "Make sure the full grid is visible in the photo."
+        f"Could not find all 4 ArUco markers. Required: {list(marker_ids)}. "
+        f"Found only: {global_best_ids}. Missing: {missing}. \n"
+        f"Check lighting and ensure markers are not cut off. See red boxes in: {debug_save_path}"
     )
+
+
+
+
+
 
 
 def order_corners(pts):
@@ -1064,7 +820,48 @@ def order_corners(pts):
     return np.array([tl, tr, br, bl], dtype=np.float32)
 
 
+def scrub_grid_lines_perspective(binary, grid_rows, grid_cols, thickness=10):
+    """
+    Remove grid lines from a rectified binary image by identifying them morphologically 
+    and masking them out at predicted geometric intervals.
+    """
+    height, width = binary.shape[:2]
+    
+    # 1. Use morphology to find horizontal and vertical line candidates.
+    horiz_len = max(10, int(width / grid_cols * 0.8))
+    vert_len = max(10, int(height / grid_rows * 0.8))
+    
+    horiz_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (horiz_len, 1))
+    vert_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, vert_len))
+    
+    horiz = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horiz_kernel)
+    vert = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vert_kernel)
+    
+    # Dilate detected lines slightly to catch anti-aliasing artifacts.
+    detected_mask = cv2.bitwise_or(horiz, vert)
+    detected_mask = cv2.dilate(detected_mask, np.ones((3, 3), np.uint8))
+    
+    # 2. Add geometric "guess" masks for the grid boundaries.
+    guess_mask = np.zeros_like(binary)
+    cell_w = width / float(grid_cols)
+    cell_h = height / float(grid_rows)
+    
+    for i in range(grid_rows + 1):
+        y = int(round(i * cell_h))
+        cv2.line(guess_mask, (0, y), (width - 1, y), 255, thickness)
+    for i in range(grid_cols + 1):
+        x = int(round(i * cell_w))
+        cv2.line(guess_mask, (x, 0), (x, height - 1), 255, thickness)
+        
+    final_mask = cv2.bitwise_or(detected_mask, guess_mask)
+    # Mandatorily erase outer edges.
+    cv2.rectangle(final_mask, (0, 0), (width - 1, height - 1), 255, 6)
+
+    return remove_line_mask(binary, final_mask)
+
+
 def perspective_correct(image, corners, output_size=PERSPECTIVE_OUTPUT_SIZE):
+
     """Warp the image so the detected grid becomes a perfect square."""
 
     ordered = order_corners(corners)
@@ -1090,7 +887,7 @@ def extract_cells_uniform(
     labels,
     grid_rows,
     grid_cols,
-    inset_ratio=0.15,
+    inset_ratio=0.08,
     pad=4,
 ):
     """Divide the rectified binary image into uniform grid cells and extract content."""
@@ -1214,19 +1011,20 @@ def save_perspective_debug(
 
 
 def extract(
-    image_path=DEFAULT_IMAGE_PATH,
+    image_path,
     output_folder=None,
     debug_output_path=None,
     grid_rows=HANDWRITING_GRID_ROWS,
     grid_cols=HANDWRITING_GRID_COLS,
     labels=None,
-    grid_mode="perspective",
     skip_morph=False,
-    use_bounds=False,
-    center_symbols=False,
     clean_symbols=False,
     threshold_mode="adaptive",
 ):
+    """
+    Main entry point for extracting handwritten characters from a sheet.
+    Strictly requires ArUco markers (0, 1, 2, 3) at the corners for grid detection.
+    """
     image_path = str(resolve_project_path(image_path))
 
     if labels is None:
@@ -1252,136 +1050,55 @@ def extract(
     if image is None:
         raise FileNotFoundError(f"Could not read image: {image_path}")
 
-    if grid_mode == "perspective":
-        print("Grid mode: perspective (printed grid detection)")
-        try:
-            corners = find_grid_contour(image)
-            print("Grid contour found — 4 corners detected.")
-        except RuntimeError as exc:
-            print(f"Perspective detection failed: {exc}")
-            print(f"Falling back to auto grid mode... (Looking for {grid_rows}x{grid_cols} layout)")
-            grid_mode = "auto"
+    print("Detecting ArUco markers (0, 1, 2, 3)...")
+    corners = find_grid_aruco(image)
+    print("ArUco markers found — 4 corners detected.")
 
-    if grid_mode == "perspective":
-        rectified_color, transform_matrix = perspective_correct(
-            image, corners, output_size=PERSPECTIVE_OUTPUT_SIZE
-        )
-        print(f"Perspective corrected to {PERSPECTIVE_OUTPUT_SIZE}x{PERSPECTIVE_OUTPUT_SIZE}.")
+    rectified_color, transform_matrix = perspective_correct(
+        image, corners, output_size=PERSPECTIVE_OUTPUT_SIZE
+    )
+    print(f"Perspective corrected to {PERSPECTIVE_OUTPUT_SIZE}x{PERSPECTIVE_OUTPUT_SIZE}.")
 
-        rectified_gray = normalize_input_for_extraction(rectified_color)
-        rectified_blur = cv2.GaussianBlur(rectified_gray, (5, 5), 0)
-        rectified_binary = cv2.adaptiveThreshold(
-            rectified_blur,
-            255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY_INV,
-            11,
-            2,
-        )
-        rectified_binary = apply_post_threshold_cleanup(
-            rectified_binary, skip_open=skip_morph
-        )
+    # ArUco mode uses a bordered grid (Content + 1-cell border all around)
+    augmented_rows = grid_rows + 2
+    augmented_cols = grid_cols + 2
 
-        ordered_cells = extract_cells_uniform(
-            rectified_binary, labels, grid_rows, grid_cols
-        )
-        print("Ordered glyph cells:", len(ordered_cells))
+    # Use adaptive threshold selection for the rectified image.
+    rectified_binary, threshold_type = choose_threshold_mode(
+        rectified_color,
+        skip_open=skip_morph,
+        grid_rows=augmented_rows,
+        grid_cols=augmented_cols,
+    )
+    print(f"Rectified threshold mode: {threshold_type}")
 
-        save_perspective_debug(
-            image, corners, rectified_color, debug_output_path,
-            labels, grid_rows, grid_cols
-        )
-        print("Saved debug overlay:", debug_output_path)
-    else:
-        if threshold_mode == "auto":
-            thresh, chosen_threshold_mode = choose_threshold_mode(
-                image,
-                skip_open=skip_morph,
-                grid_rows=grid_rows,
-                grid_cols=grid_cols,
-            )
-            print("Threshold mode:", chosen_threshold_mode)
-        else:
-            thresh = preprocess_image(
-                image,
-                skip_open=skip_morph,
-                mode=threshold_mode,
-            )
+    # Remove the grid lines from the rectified binary image.
+    rectified_binary = scrub_grid_lines_perspective(
+        rectified_binary, augmented_rows, augmented_cols
+    )
 
-        if grid_mode == "fixed":
-            ordered_cells, grid_bounds = build_fixed_ordered_cells(
-                thresh, labels, grid_rows, grid_cols
-            )
-            print("Ordered glyph cells:", len(ordered_cells))
-            save_fixed_grid_debug(
-                image, grid_bounds, debug_output_path, labels, grid_rows, grid_cols
-            )
-            print("Saved debug overlay:", debug_output_path)
-        elif grid_mode == "lines":
-            row_lines, col_lines, line_mask = detect_grid_lines(
-                thresh, grid_rows, grid_cols
-            )
+    # Build augmented labels list for the full augmented grid (Markers in corners, content in center)
+    augmented_labels = [""] * (augmented_rows * augmented_cols)
+    for r in range(grid_rows):
+        for c in range(grid_cols):
+            label_idx = r * grid_cols + c
+            if label_idx < len(labels):
+                aug_idx = (r + 1) * augmented_cols + (c + 1)
+                augmented_labels[aug_idx] = labels[label_idx]
 
-            if row_lines and col_lines:
-                cleaned = remove_line_mask(thresh, line_mask)
-                ordered_cells = build_line_ordered_cells(
-                    cleaned, labels, row_lines, col_lines
-                )
-                print("Ordered glyph cells:", len(ordered_cells))
-                save_line_grid_debug(
-                    image, row_lines, col_lines, debug_output_path, labels
-                )
-                print("Saved debug overlay:", debug_output_path)
-            else:
-                cleaned = thresh
-                components = gather_components(cleaned)
-                print("Detected components:", len(components))
+    ordered_cells = extract_cells_uniform(
+        rectified_binary, augmented_labels, augmented_rows, augmented_cols
+    )
+    
+    # Filter out the empty border cells from the final result
+    ordered_cells = [cell for cell in ordered_cells if cell[0] != ""]
+    print("Ordered glyph cells (extracted from inner grid):", len(ordered_cells))
 
-                row_centers, col_centers = estimate_grid_centers(
-                    components, grid_rows, grid_cols
-                )
-                print("Row centers:", [round(center, 1) for center in row_centers])
-                print("Col centers:", [round(center, 1) for center in col_centers])
-
-                if use_bounds:
-                    ordered_cells, row_bounds, col_bounds = build_center_bounds_cells(
-                        cleaned, labels, row_centers, col_centers
-                    )
-                    save_bounds_debug(
-                        image, row_bounds, col_bounds, debug_output_path, labels
-                    )
-                else:
-                    cells = assign_components_to_cells(
-                        components, row_centers, col_centers, grid_rows, grid_cols
-                    )
-                    ordered_cells = build_ordered_cells(
-                        cleaned, cells, labels, grid_rows, grid_cols
-                    )
-                    save_debug_overlay(
-                        image, cells, debug_output_path, labels, grid_rows, grid_cols
-                    )
-                print("Ordered glyph cells:", len(ordered_cells))
-                print("Saved debug overlay:", debug_output_path)
-        else:
-            components = gather_components(thresh)
-            print("Detected components:", len(components))
-
-            row_centers, col_centers = estimate_grid_centers(
-                components, grid_rows, grid_cols
-            )
-            print("Row centers:", [round(center, 1) for center in row_centers])
-            print("Col centers:", [round(center, 1) for center in col_centers])
-
-            cells = assign_components_to_cells(
-                components, row_centers, col_centers, grid_rows, grid_cols
-            )
-            ordered_cells = build_ordered_cells(
-                thresh, cells, labels, grid_rows, grid_cols
-            )
-
-            print("Ordered glyph cells:", len(ordered_cells))
-            save_debug_overlay(image, cells, debug_output_path, labels, grid_rows, grid_cols)
-            print("Saved debug overlay:", debug_output_path)
+    save_perspective_debug(
+        image, corners, rectified_color, debug_output_path,
+        augmented_labels, augmented_rows, augmented_cols
+    )
+    print("Saved debug overlay:", debug_output_path)
 
     ordered_cells = prepare_cells_for_normalization(
         ordered_cells,
@@ -1442,12 +1159,12 @@ def extract(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--image")
-    parser.add_argument("--output")
-    parser.add_argument("--debug-output")
-    parser.add_argument("--grid", type=str, default=None)
-    parser.add_argument("--labels-file", type=str, default=None)
+    parser = argparse.ArgumentParser(description="Handwritten Glyph Extractor (ArUco Version)")
+    parser.add_argument("--image", help="Path to the image to extract from.")
+    parser.add_argument("--output", help="Optional output folder.")
+    parser.add_argument("--debug-output", help="Optional debug image path.")
+    parser.add_argument("--grid", type=str, default=None, help="Grid size, e.g. 8x8 or 5x6.")
+    parser.add_argument("--labels-file", type=str, default=None, help="Path to a text file containing cell labels.")
 
     args = parser.parse_args()
 
@@ -1482,13 +1199,15 @@ if __name__ == "__main__":
         if args.output or args.debug_output:
             raise ValueError(
                 "--output and --debug-output require --image. "
-                "Without --image, extractor processes every handwriting*.jpg sample automatically."
+                "Without --image, extractor processes default samples automatically."
             )
 
+        # Process standard handwriting samples
         for image_path in discover_handwriting_images():
             print(f"\n=== Extracting dataset from {image_path.name} ===")
             extract(image_path=str(image_path))
 
+        # Process coding symbol samples
         coding_images = discover_images(CODING_SYMBOL_DIR, pattern="*.jpg", required=False)
         if coding_images:
             labels = DEFAULT_CODING_SYMBOLS
@@ -1509,9 +1228,6 @@ if __name__ == "__main__":
                     grid_rows=CODING_GRID_ROWS,
                     grid_cols=CODING_GRID_COLS,
                     labels=labels,
-                    grid_mode="perspective",
                     skip_morph=True,
-                    use_bounds=True,
-                    center_symbols=True,
                     clean_symbols=True,
                 )

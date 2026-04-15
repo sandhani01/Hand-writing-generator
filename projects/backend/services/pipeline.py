@@ -37,10 +37,7 @@ def extract_dataset(image_path: Path, dataset_type: str, output_folder: Path) ->
             grid_rows=extractor.CODING_GRID_ROWS,
             grid_cols=extractor.CODING_GRID_COLS,
             labels=labels,
-            grid_mode="perspective",
             skip_morph=True,
-            use_bounds=True,
-            center_symbols=True,
             clean_symbols=True,
             threshold_mode="auto",
         )
