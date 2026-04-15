@@ -1,0 +1,374 @@
+import cv2
+import os
+import numpy as np
+
+image_path = "handwriting.jpg"
+output_folder = "glyphs"
+
+labels = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-*")
+
+ASCENDERS = set("bdfhklt")
+DESCENDERS = set("gjpqy")
+X_HEIGHT_LOWER = set("acemnorsuvwxz")
+
+os.makedirs(output_folder, exist_ok=True)
+
+
+def folder_name(letter):
+    if letter.isupper():
+        return letter + "_upper"
+    elif letter.islower():
+        return letter + "_lower"
+    elif letter == "-":
+        return "dash"
+    elif letter == "*":
+        return "star"
+    else:
+        return letter
+
+
+def glyph_group(letter):
+    if letter.isupper():
+        return "upper"
+    if letter.isdigit():
+        return "digit"
+    if letter in "-*":
+        return "symbol"
+    if letter in ASCENDERS:
+        return "lower_asc"
+    if letter in DESCENDERS:
+        return "lower_desc"
+    if letter in X_HEIGHT_LOWER:
+        return "lower_x"
+    return "lower_other"
+
+
+def merge_boxes(box_a, box_b):
+    x1 = min(box_a["x"], box_b["x"])
+    y1 = min(box_a["y"], box_b["y"])
+    x2 = max(box_a["x"] + box_a["w"], box_b["x"] + box_b["w"])
+    y2 = max(box_a["y"] + box_a["h"], box_b["y"] + box_b["h"])
+
+    return {
+        "x": x1,
+        "y": y1,
+        "w": x2 - x1,
+        "h": y2 - y1,
+        "area": box_a["area"] + box_b["area"],
+    }
+
+
+def merge_diacritic_boxes(candidates):
+    large_boxes = [box.copy() for box in candidates if box["area"] > 50]
+    small_boxes = [box.copy() for box in candidates if 6 <= box["area"] <= 50]
+
+    for dot in small_boxes:
+        dot_center_x = dot["x"] + dot["w"] / 2
+        dot_bottom = dot["y"] + dot["h"]
+        best_index = None
+        best_score = None
+
+        for idx, base in enumerate(large_boxes):
+            base_center_x = base["x"] + base["w"] / 2
+            horizontal_distance = abs(dot_center_x - base_center_x)
+            vertical_gap = base["y"] - dot_bottom
+            overlap_left = max(dot["x"], base["x"])
+            overlap_right = min(dot["x"] + dot["w"], base["x"] + base["w"])
+            overlap_width = max(0, overlap_right - overlap_left)
+
+            if vertical_gap < -4 or vertical_gap > 45:
+                continue
+
+            if horizontal_distance > max(base["w"] * 0.45, 14):
+                continue
+
+            if overlap_width <= 0 and horizontal_distance > max(dot["w"], 8):
+                continue
+
+            score = horizontal_distance + max(vertical_gap, 0) * 0.35
+
+            if best_score is None or score < best_score:
+                best_score = score
+                best_index = idx
+
+        if best_index is not None:
+            large_boxes[best_index] = merge_boxes(large_boxes[best_index], dot)
+
+    return large_boxes
+
+
+# -----------------------------
+# CROP TIGHTLY BUT SAFELY
+# -----------------------------
+def crop_to_content(roi, pad=2):
+    coords = cv2.findNonZero(roi)
+
+    if coords is None:
+        return roi
+
+    x, y, w, h = cv2.boundingRect(coords)
+
+    x1 = max(x - pad, 0)
+    y1 = max(y - pad, 0)
+    x2 = min(x + w + pad, roi.shape[1])
+    y2 = min(y + h + pad, roi.shape[0])
+
+    return roi[y1:y2, x1:x2]
+
+
+def compute_reference_height(heights):
+    if not heights:
+        return 32.0
+
+    heights = sorted(heights)
+    index = int(round((len(heights) - 1) * 0.70))
+    index = max(0, min(index, len(heights) - 1))
+
+    return float(heights[index])
+
+
+def compute_group_reference_heights(ordered, labels):
+    grouped_heights = {}
+
+    for i, (_, _, _, _, h) in enumerate(ordered):
+        if i >= len(labels):
+            break
+
+        group = glyph_group(labels[i])
+        grouped_heights.setdefault(group, []).append(h)
+
+    reference_heights = {
+        group: compute_reference_height(heights)
+        for group, heights in grouped_heights.items()
+    }
+
+    all_heights = [h for heights in grouped_heights.values() for h in heights]
+    global_reference = compute_reference_height(all_heights)
+
+    return reference_heights, global_reference
+
+
+# -----------------------------
+# HEIGHT-BASED NORMALIZATION
+# -----------------------------
+def normalize_glyph(
+    roi,
+    reference_height,
+    final_size=64,
+    target_height_ratio=0.72,
+    baseline_ratio=0.82,
+    horizontal_padding_ratio=0.18,
+    max_width_ratio=0.90,
+    max_height_ratio=0.90,
+):
+    h, w = roi.shape[:2]
+
+    canvas = np.zeros((final_size, final_size), dtype=np.uint8)
+
+    target_height = final_size * target_height_ratio
+    scale = target_height / max(reference_height, 1.0)
+
+    fit_scale = min(
+        scale,
+        (final_size * max_width_ratio) / max(w, 1),
+        (final_size * max_height_ratio) / max(h, 1),
+    )
+
+    new_w = max(1, int(round(w * fit_scale)))
+    new_h = max(1, int(round(h * fit_scale)))
+
+    interpolation = cv2.INTER_AREA if fit_scale < 1 else cv2.INTER_CUBIC
+    resized = cv2.resize(roi, (new_w, new_h), interpolation=interpolation)
+
+    side_pad = int(round(final_size * horizontal_padding_ratio))
+    usable_width = max(1, final_size - 2 * side_pad)
+    if new_w > usable_width:
+        shrink = usable_width / max(new_w, 1)
+        new_w = max(1, int(round(new_w * shrink)))
+        new_h = max(1, int(round(new_h * shrink)))
+        resized = cv2.resize(resized, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    xoff = max(0, (final_size - new_w) // 2)
+    baseline = int(round(final_size * baseline_ratio))
+    yoff = baseline - new_h
+
+    yoff = min(max(0, yoff), final_size - new_h)
+    xoff = min(max(0, xoff), final_size - new_w)
+
+    canvas[yoff:yoff + new_h, xoff:xoff + new_w] = resized
+
+    return canvas
+
+
+# -----------------------------
+# LOAD IMAGE
+# -----------------------------
+img = cv2.imread(image_path)
+
+if img is None:
+    raise FileNotFoundError(f"Could not read image: {image_path}")
+
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+thresh = cv2.adaptiveThreshold(
+    blur,
+    255,
+    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+    cv2.THRESH_BINARY_INV,
+    11,
+    2
+)
+
+kernel = np.ones((2, 2), np.uint8)
+thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+
+
+# -----------------------------
+# FIND CONTOURS
+# -----------------------------
+contours, _ = cv2.findContours(
+    thresh,
+    cv2.RETR_EXTERNAL,
+    cv2.CHAIN_APPROX_SIMPLE
+)
+
+candidates = []
+
+for c in contours:
+    x, y, w, h = cv2.boundingRect(c)
+    area = cv2.contourArea(c)
+
+    if area >= 6:
+        candidates.append({
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": h,
+            "area": area,
+        })
+
+merged_boxes = merge_diacritic_boxes(candidates)
+boxes = []
+
+for box in merged_boxes:
+    center_x = box["x"] + box["w"] / 2
+    boxes.append([center_x, box["x"], box["y"], box["w"], box["h"]])
+
+print("Detected:", len(boxes))
+
+
+# -----------------------------
+# SORT BY COLUMN
+# -----------------------------
+boxes = sorted(boxes, key=lambda b: b[0])
+
+columns = []
+current = []
+
+threshold = 60
+
+for b in boxes:
+    if not current:
+        current.append(b)
+        continue
+
+    current_x = np.mean([x[0] for x in current])
+
+    if abs(b[0] - current_x) < threshold:
+        current.append(b)
+    else:
+        columns.append(current)
+        current = [b]
+
+if current:
+    columns.append(current)
+
+
+# -----------------------------
+# SORT EACH COLUMN BY Y
+# -----------------------------
+for col in columns:
+    col.sort(key=lambda b: b[2])
+
+ordered = []
+
+max_rows = max(len(col) for col in columns) if columns else 0
+
+for r in range(max_rows):
+    for col in columns:
+        if r < len(col):
+            ordered.append(col[r])
+
+print("Ordered characters:", len(ordered))
+
+group_reference_heights, global_reference_height = compute_group_reference_heights(
+    ordered,
+    labels
+)
+
+print("Global reference height:", round(global_reference_height, 2))
+for group_name in sorted(group_reference_heights):
+    print(
+        f"{group_name} reference height:",
+        round(group_reference_heights[group_name], 2)
+    )
+
+
+# -----------------------------
+# EXTRACT GLYPHS
+# -----------------------------
+margin = 4
+
+for i, (cx, x, y, w, h) in enumerate(ordered):
+    if i >= len(labels):
+        break
+
+    char = labels[i]
+    group = glyph_group(char)
+    reference_height = group_reference_heights.get(group, global_reference_height)
+
+    baseline_ratio = 0.82
+    target_height_ratio = 0.72
+
+    if group == "lower_x":
+        target_height_ratio = 0.58
+    elif group == "lower_asc":
+        target_height_ratio = 0.74
+    elif group == "lower_desc":
+        target_height_ratio = 0.80
+        baseline_ratio = 0.70
+    elif group == "upper":
+        target_height_ratio = 0.78
+    elif group == "digit":
+        target_height_ratio = 0.70
+    elif group == "symbol":
+        target_height_ratio = 0.52
+
+    x1 = max(0, x - margin)
+    y1 = max(0, y - margin)
+    x2 = min(thresh.shape[1], x + w + margin)
+    y2 = min(thresh.shape[0], y + h + margin)
+
+    roi = thresh[y1:y2, x1:x2]
+    roi = crop_to_content(roi)
+
+    glyph = normalize_glyph(
+        roi,
+        reference_height=reference_height,
+        final_size=64,
+        target_height_ratio=target_height_ratio,
+        baseline_ratio=baseline_ratio
+    )
+
+    folder = os.path.join(output_folder, folder_name(char))
+    os.makedirs(folder, exist_ok=True)
+
+    path = os.path.join(folder, f"{folder_name(char)}_{i}.png")
+
+    cv2.imwrite(path, glyph)
+
+    print("Saved:", path)
+
+print("\nExtraction complete!")

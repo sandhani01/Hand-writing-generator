@@ -207,6 +207,16 @@ class Settings:
     def uses_celery(self) -> bool:
         return self.job_backend == "celery"
 
+    def validate_runtime_requirements(self) -> list[str]:
+        errors = []
+        if self.auth_mode == "supabase":
+            if not self.supabase_url:
+                errors.append("HANDWRITING_SUPABASE_URL is required for supabase auth")
+        if self.storage_backend == "s3":
+            if not self.storage_bucket:
+                errors.append("HANDWRITING_STORAGE_BUCKET is required for s3 storage")
+        return errors
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

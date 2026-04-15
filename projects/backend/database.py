@@ -267,7 +267,61 @@ def _apply_runtime_migrations(connection: Connection) -> None:
         )
     )
 
+    _migrate_absolute_paths_to_relative(connection)
     _migrate_legacy_runtime_layout(connection)
+
+
+def _migrate_absolute_paths_to_relative(connection: Connection) -> None:
+    settings = get_settings()
+    if settings.storage_backend != "local":
+        return
+
+    # Tables and their columns that store paths
+    targets = {
+        "datasets": ["source_image_path", "glyph_root"],
+        "backgrounds": ["source_image_path"],
+        "render_jobs": ["output_path"],
+    }
+
+    for table, columns in targets.items():
+        # Fetch all rows for this table
+        try:
+            rows = connection.execute(text(f"SELECT id, {', '.join(columns)} FROM {table}")).all()
+        except Exception:
+            # Table might not exist yet during initial schema creation
+            continue
+
+        for row in rows:
+            row_id = row[0]
+            updates = {}
+            for i, col in enumerate(columns):
+                val = row[i + 1]
+                if not val or not isinstance(val, str):
+                    continue
+
+                path = Path(val)
+                if not path.is_absolute():
+                    continue
+
+                # It's an absolute path. We want to make it relative to settings.data_dir.
+                # Since the project moved, the absolute path might be from an old machine.
+                # We look for common markers in our directory structure.
+                new_val = None
+                for marker in ["uploads", "glyph_sets", "renders"]:
+                    if marker in path.parts:
+                        idx = path.parts.index(marker)
+                        new_val = str(Path(*path.parts[idx:]))
+                        break
+
+                if new_val:
+                    updates[col] = new_val
+
+            if updates:
+                set_clause = ", ".join([f"{col} = :{col}" for col in updates])
+                connection.execute(
+                    text(f"UPDATE {table} SET {set_clause} WHERE id = :id"),
+                    {**updates, "id": row_id},
+                )
 
 
 def _move_directory_contents(source: Path, target: Path) -> None:

@@ -37,48 +37,55 @@ class LocalStorageBackend:
         target = settings.uploads_dir / user_id / dataset_type / dataset_id / safe_name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)
-        return str(target)
+        # Store relative to data_dir for portability
+        return str(target.relative_to(settings.data_dir))
 
     def dataset_glyph_root(self, user_id: str, dataset_id: str) -> str:
         settings = get_settings()
         target = settings.glyph_sets_dir / user_id / dataset_id
         target.mkdir(parents=True, exist_ok=True)
-        return str(target)
+        return str(target.relative_to(settings.data_dir))
 
     def render_output_ref(self, user_id: str, render_id: str) -> str:
         settings = get_settings()
         target = settings.renders_dir / user_id / f"{render_id}.png"
         target.parent.mkdir(parents=True, exist_ok=True)
-        return str(target)
+        return str(target.relative_to(settings.data_dir))
+
+    def _resolve(self, ref: str) -> Path:
+        path = Path(ref)
+        if path.is_absolute():
+            return path
+        return get_settings().data_dir / path
 
     @contextmanager
     def materialize_file(self, ref: str):
-        yield Path(ref)
+        yield self._resolve(ref)
 
     @contextmanager
     def materialize_tree(self, ref: str):
-        yield Path(ref)
+        yield self._resolve(ref)
 
     def save_tree(self, local_dir: Path, ref: str) -> None:
-        target = Path(ref)
+        target = self._resolve(ref)
         if target.exists():
             shutil.rmtree(target)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(local_dir, target)
 
     def save_file(self, local_path: Path, ref: str) -> None:
-        target = Path(ref)
+        target = self._resolve(ref)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(local_path, target)
 
     def read_file(self, ref: str) -> bytes:
-        return Path(ref).read_bytes()
+        return self._resolve(ref).read_bytes()
 
     def exists(self, ref: str) -> bool:
-        return Path(ref).exists()
+        return self._resolve(ref).exists()
 
     def delete(self, ref: str) -> None:
-        path = Path(ref)
+        path = self._resolve(ref)
         if not path.exists():
             return
         if path.is_dir():
@@ -87,7 +94,7 @@ class LocalStorageBackend:
             path.unlink()
 
     def download_response(self, ref: str, filename: str, media_type: str) -> Response:
-        return FileResponse(Path(ref), media_type=media_type, filename=filename)
+        return FileResponse(self._resolve(ref), media_type=media_type, filename=filename)
 
 
 class S3StorageBackend:

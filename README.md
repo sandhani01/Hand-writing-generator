@@ -69,7 +69,7 @@ pip install numpy opencv-python pillow
 For the production backend scaffold:
 
 ```powershell
-pip install -r "C:\Users\ssand\Downloads\Handwritten Notes Generator\projects\requirements-production.txt"
+pip install -r projects/requirements-production.txt
 ```
 
 ### Frontend side
@@ -90,7 +90,7 @@ Open two terminals.
 ### Terminal 1: Python API
 
 ```powershell
-cd "C:\Users\ssand\Downloads\Handwritten Notes Generator\projects"
+cd projects
 python api_server.py
 ```
 
@@ -108,7 +108,7 @@ python api_server.py
 ### Terminal 2: Frontend
 
 ```powershell
-cd "C:\Users\ssand\Downloads\Handwritten Notes Generator\frontend"
+cd frontend
 npm install
 npm run dev
 ```
@@ -127,7 +127,7 @@ npm run dev
 This is now the main multi-user backend path for the hosted app frontend.
 
 ```powershell
-cd "C:\Users\ssand\Downloads\Handwritten Notes Generator\projects"
+cd projects
 uvicorn backend.main:app --reload
 ```
 
@@ -274,21 +274,21 @@ From `projects/backend/`:
 ### Type-check frontend
 
 ```powershell
-cd "C:\Users\ssand\Downloads\Handwritten Notes Generator\frontend"
+cd frontend
 npx tsc -b
 ```
 
 ### Lint frontend
 
 ```powershell
-cd "C:\Users\ssand\Downloads\Handwritten Notes Generator\frontend"
+cd frontend
 npm run lint
 ```
 
 ### Python syntax check
 
 ```powershell
-python -m py_compile "C:\Users\ssand\Downloads\Handwritten Notes Generator\projects\renderer.py" "C:\Users\ssand\Downloads\Handwritten Notes Generator\projects\extractor.py" "C:\Users\ssand\Downloads\Handwritten Notes Generator\projects\api_server.py"
+python -m py_compile projects/renderer.py projects/extractor.py projects/api_server.py
 ```
 
 ---
