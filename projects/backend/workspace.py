@@ -20,6 +20,8 @@ DEFAULT_BACKGROUND_ID = "default-ruled"
 _SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _WORKSPACE_SESSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$")
 _MANIFEST_LOCK = Lock()
+_CLEANUP_LOCK = Lock()
+_last_cleanup_at: datetime | None = None
 
 
 def _now() -> datetime:
@@ -106,11 +108,23 @@ def _write_manifest(path: Path, payload: dict[str, Any]) -> None:
 
 
 def cleanup_stale_workspaces() -> None:
-    prepare_workspace_runtime()
+    global _last_cleanup_at
+
     settings = get_settings()
-    cutoff = _now() - timedelta(hours=max(1, settings.workspace_ttl_hours))
+    now = _now()
+
+    # Throttle cleanup to run at most once per hour
+    with _CLEANUP_LOCK:
+        if _last_cleanup_at and (now - _last_cleanup_at) < timedelta(minutes=60):
+            return
+        _last_cleanup_at = now
+
+    prepare_workspace_runtime()
+    cutoff = now - timedelta(hours=max(1, settings.workspace_ttl_hours))
 
     with _MANIFEST_LOCK:
+        if not settings.workspaces_dir.exists():
+            return
         for user_dir in settings.workspaces_dir.iterdir():
             if not user_dir.is_dir():
                 continue

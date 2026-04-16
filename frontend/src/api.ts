@@ -1,3 +1,10 @@
+import { isHostedAuthEnabled } from "./authConfig";
+import {
+  persistAuthRefreshToken,
+  persistAuthToken,
+  readStoredRefreshToken,
+} from "./authStorage";
+import { refreshSupabaseSession } from "./providerAuth";
 import type { ApiError } from "./types";
 
 const API_TIMEOUT_MS = 15000;
@@ -54,6 +61,8 @@ async function fetchWithTimeout(
   }
 }
 
+let isRefreshing = false;
+
 export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {}
@@ -63,6 +72,35 @@ export async function apiFetch<T>(
 
   const response = await fetchWithTimeout(url, options);
 
+  if (response.status === 401 && !isRefreshing && isHostedAuthEnabled()) {
+    const refreshToken = readStoredRefreshToken();
+    if (refreshToken) {
+      isRefreshing = true;
+      try {
+        const refreshed = await refreshSupabaseSession(refreshToken);
+        persistAuthToken(refreshed.accessToken, "supabase");
+        persistAuthRefreshToken(refreshed.refreshToken);
+
+        // Retry with new token
+        const retryOptions = {
+          ...options,
+          authToken: refreshed.accessToken,
+        };
+        const retryResponse = await fetchWithTimeout(url, retryOptions);
+        return handleApiResponse<T>(retryResponse);
+      } catch (refreshError) {
+        // Fall through to standard 401 handling if refresh fails
+        console.error("Silent refresh failed:", refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+  }
+
+  return handleApiResponse<T>(response);
+}
+
+async function handleApiResponse<T>(response: Response): Promise<T> {
   let payload: any = null;
   const contentType = response.headers.get("Content-Type");
   if (contentType?.includes("application/json")) {
@@ -74,7 +112,10 @@ export async function apiFetch<T>(
   }
 
   if (!response.ok) {
-    const message = payload?.detail || payload?.error || `Request failed with status ${response.status}`;
+    const message =
+      payload?.detail ||
+      payload?.error ||
+      `Request failed with status ${response.status}`;
     throw new ApiRequestError(response.status, message, payload);
   }
 

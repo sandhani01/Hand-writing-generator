@@ -30,6 +30,7 @@ import {
   signInWithSupabasePassword,
   signUpWithSupabasePassword,
 } from "./providerAuth";
+import { apiClient } from "./api";
 import { useTheme } from "./useTheme";
 import {
   DEFAULT_TEXT_CODING,
@@ -158,9 +159,16 @@ export default function App() {
   const [refreshToken, setRefreshToken] = useState<string | null>(() =>
     initialSession?.refreshToken ?? null
   );
-  const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(() =>
-    readStoredWorkspaceSessionId()
+  const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(
+    null
   );
+
+  const createWorkspaceSessionId = () => {
+    return `ws_${Math.random()
+      .toString(36)
+      .substring(2, 11)}_${Date.now().toString(36)}`;
+  };
+
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -231,23 +239,6 @@ export default function App() {
       )
   );
 
-  const authHeaders = useCallback(
-    (
-      tokenOverride?: string,
-      workspaceOverride?: string
-    ): Record<string, string> => {
-      const token = tokenOverride ?? authToken;
-      const activeWorkspaceSessionId = workspaceOverride ?? workspaceSessionId;
-      if (!token || !activeWorkspaceSessionId) {
-        return {};
-      }
-      return {
-        Authorization: `Bearer ${token}`,
-        "X-Workspace-Session": activeWorkspaceSessionId,
-      };
-    },
-    [authToken, workspaceSessionId]
-  );
 
   const persistSession = useCallback(
     (
@@ -311,23 +302,20 @@ export default function App() {
 
   const fetchCurrentUser = useCallback(
     async (token: string, workspaceOverride?: string) => {
-      const response = await fetchWithTimeout(
-        apiUrl("/api/v1/me"),
-        {
-          headers: authHeaders(token, workspaceOverride),
-        },
-        WORKSPACE_VERIFY_TIMEOUT_MS
-      );
-      let data: UserProfile | ApiError | null = null;
       try {
-        data = (await response.json()) as UserProfile | ApiError;
-      } catch {
-        data = null;
+        const data = await apiClient.get<UserProfile>("/api/v1/me", {
+          authToken: token,
+          workspaceSessionId: workspaceOverride,
+        });
+        return { response: { ok: true } as Response, data };
+      } catch (error) {
+        return {
+          response: { ok: false, status: (error as any).status } as Response,
+          data: null,
+        };
       }
-
-      return { response, data };
     },
-    [apiUrl, authHeaders]
+    []
   );
 
   const setNumericOption = (key: NumericOptionKey, value: number) => {
@@ -343,13 +331,8 @@ export default function App() {
 
   const loadRendererDefaults = useCallback(async () => {
     try {
-      const response = await fetchWithTimeout(
-        apiUrl("/api/v1/defaults"),
-        {},
-        DEFAULTS_FETCH_TIMEOUT_MS
-      );
-      const data: DefaultsResponse = await response.json();
-      if (!response.ok || !data.options) {
+      const data = await apiClient.get<DefaultsResponse>("/api/v1/defaults");
+      if (!data.options) {
         throw new Error("Could not load renderer defaults");
       }
 
@@ -362,7 +345,7 @@ export default function App() {
       setOptions(FALLBACK_OPTIONS);
       setSupportsCharacterOverrides(false);
     }
-  }, [apiUrl]);
+  }, []);
 
   const loadDatasets = useCallback(
     async (tokenOverride?: string, workspaceOverride?: string) => {
@@ -376,32 +359,10 @@ export default function App() {
 
       setIsLoadingDatasets(true);
       try {
-        const response = await fetchWithTimeout(
-          apiUrl("/api/v1/datasets"),
-          {
-            headers: authHeaders(token, activeWorkspaceSessionId),
-          },
-          WORKSPACE_ASSET_TIMEOUT_MS
+        const data = await apiClient.get<DatasetListResponse>(
+          "/api/v1/datasets",
+          { authToken: token, workspaceSessionId: activeWorkspaceSessionId }
         );
-        let data: DatasetListResponse | ApiError | null = null;
-        try {
-          data = (await response.json()) as DatasetListResponse | ApiError;
-        } catch {
-          data = null;
-        }
-
-        if (response.status === 401) {
-          handleExpiredSession(
-            extractApiErrorMessage(data as ApiError, "Please sign in again.")
-          );
-          return;
-        }
-
-        if (!response.ok || !data || !("items" in data)) {
-          throw new Error(
-            extractApiErrorMessage(data as ApiError, "Could not load datasets.")
-          );
-        }
 
         setAvailableCounts({
           handwriting: data.alphabet_count,
@@ -411,6 +372,10 @@ export default function App() {
         });
         setDatasets(data.items);
       } catch (error) {
+        if (error instanceof Error && (error as any).status === 401) {
+          handleExpiredSession();
+          return;
+        }
         setUploadError(
           getErrorMessage(
             error,
@@ -421,7 +386,7 @@ export default function App() {
         setIsLoadingDatasets(false);
       }
     },
-    [apiUrl, authHeaders, authToken, handleExpiredSession, workspaceSessionId]
+    [authToken, handleExpiredSession, workspaceSessionId]
   );
 
   const loadBackgrounds = useCallback(
@@ -436,46 +401,25 @@ export default function App() {
       }
 
       try {
-        const response = await fetchWithTimeout(
-          apiUrl("/api/v1/backgrounds"),
-          {
-            headers: authHeaders(token, activeWorkspaceSessionId),
-          },
-          WORKSPACE_ASSET_TIMEOUT_MS
+        const data = await apiClient.get<BackgroundListResponse>(
+          "/api/v1/backgrounds",
+          { authToken: token, workspaceSessionId: activeWorkspaceSessionId }
         );
-        let data: BackgroundListResponse | ApiError | null = null;
-        try {
-          data = (await response.json()) as BackgroundListResponse | ApiError;
-        } catch {
-          data = null;
-        }
-
-        if (response.status === 401) {
-          handleExpiredSession(
-            extractApiErrorMessage(data as ApiError, "Please sign in again.")
-          );
-          return;
-        }
-
-        if (!response.ok || !data || !("items" in data)) {
-          throw new Error(
-            extractApiErrorMessage(
-              data as ApiError,
-              "Could not load page backgrounds."
-            )
-          );
-        }
 
         setBackgrounds(data.items);
         setBackgroundLimit(data.background_limit);
         setBackgroundCustomCount(data.custom_count);
       } catch (error) {
+        if (error instanceof Error && (error as any).status === 401) {
+          handleExpiredSession();
+          return;
+        }
         setUploadError(
           getErrorMessage(error, "Could not load your page backgrounds.")
         );
       }
     },
-    [apiUrl, authHeaders, authToken, handleExpiredSession, workspaceSessionId]
+    [authToken, handleExpiredSession, workspaceSessionId]
   );
 
   const loadRenders = useCallback(
@@ -490,32 +434,10 @@ export default function App() {
 
       setIsLoadingRenders(true);
       try {
-        const response = await fetchWithTimeout(
-          apiUrl("/api/v1/renders"),
-          {
-            headers: authHeaders(token, activeWorkspaceSessionId),
-          },
-          WORKSPACE_ASSET_TIMEOUT_MS
+        const data = await apiClient.get<{ items: RenderJobResponse[] }>(
+          "/api/v1/renders",
+          { authToken: token, workspaceSessionId: activeWorkspaceSessionId }
         );
-        let data: { items: RenderJobResponse[] } | ApiError | null = null;
-        try {
-          data = (await response.json()) as { items: RenderJobResponse[] } | ApiError;
-        } catch {
-          data = null;
-        }
-
-        if (response.status === 401) {
-          handleExpiredSession(
-            extractApiErrorMessage(data as ApiError, "Please sign in again.")
-          );
-          return;
-        }
-
-        if (!response.ok || !data || !("items" in data)) {
-          throw new Error(
-            extractApiErrorMessage(data as ApiError, "Could not load render history.")
-          );
-        }
 
         setRenderHistory(data.items);
         if (!data.items.length) {
@@ -528,21 +450,21 @@ export default function App() {
           return data.items[0]?.id ?? null;
         });
       } catch (error) {
+        if (error instanceof Error && (error as any).status === 401) {
+          handleExpiredSession();
+          return;
+        }
         setPreviewError(
-          getErrorMessage(error, "Could not load render history from the backend.")
+          getErrorMessage(
+            error,
+            "Could not load render history from the backend."
+          )
         );
       } finally {
         setIsLoadingRenders(false);
       }
     },
-    [
-      apiUrl,
-      authHeaders,
-      authToken,
-      clearPreview,
-      handleExpiredSession,
-      workspaceSessionId,
-    ]
+    [authToken, clearPreview, handleExpiredSession, workspaceSessionId]
   );
 
   const bootstrapAuthenticatedWorkspace = useCallback(
@@ -610,45 +532,31 @@ export default function App() {
   const fetchRenderPreview = useCallback(
     async (renderId: string, tokenOverride?: string) => {
       const token = tokenOverride ?? authToken;
-      if (!token) {
+      if (!token || !workspaceSessionId) {
         return;
       }
 
       setIsPreviewLoading(true);
       setPreviewError(null);
       try {
-        const response = await fetch(apiUrl(`/api/v1/renders/${renderId}/file`), {
-          headers: authHeaders(token),
+        const blob = await apiClient.blob(`/api/v1/renders/${renderId}/file`, {
+          authToken: token,
+          workspaceSessionId,
         });
-
-        if (response.status === 401) {
-          handleExpiredSession("Please sign in again.");
-          return;
-        }
-
-        if (!response.ok) {
-          let payload: ApiError | null = null;
-          try {
-            payload = (await response.json()) as ApiError;
-          } catch {
-            payload = null;
-          }
-          throw new Error(
-            extractApiErrorMessage(payload, "The PNG could not be loaded.")
-          );
-        }
-
-        const blob = await response.blob();
         clearPreview();
         setPreviewUrl(URL.createObjectURL(blob));
       } catch (error) {
+        if (error instanceof Error && (error as any).status === 401) {
+          handleExpiredSession();
+          return;
+        }
         clearPreview();
         setPreviewError(getErrorMessage(error, "The PNG could not be loaded."));
       } finally {
         setIsPreviewLoading(false);
       }
     },
-    [apiUrl, authHeaders, authToken, clearPreview, handleExpiredSession]
+    [authToken, clearPreview, handleExpiredSession, workspaceSessionId]
   );
 
   useEffect(() => {
@@ -680,6 +588,7 @@ export default function App() {
         workspaceSessionId ?? createWorkspaceSessionId();
       if (!workspaceSessionId) {
         persistWorkspaceSession(activeWorkspaceSessionId);
+        setWorkspaceSessionId(activeWorkspaceSessionId);
       }
       const workspaceBootKey = [
         authToken,
@@ -760,6 +669,29 @@ export default function App() {
     handleExpiredSession,
     workspaceSessionId,
   ]);
+
+  useEffect(() => {
+    if (!refreshToken || authProvider !== "supabase") {
+      return;
+    }
+
+    const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+    const heartbeatId = window.setInterval(async () => {
+      try {
+        const refreshed = await refreshSupabaseSession(refreshToken);
+        persistSession(
+          refreshed.accessToken,
+          currentUser!,
+          "supabase",
+          refreshed.refreshToken
+        );
+      } catch {
+        // Heartbeat failure is non-critical if silent refresh exists in apiClient
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => window.clearInterval(heartbeatId);
+  }, [currentUser, persistSession, refreshToken]);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -853,25 +785,10 @@ export default function App() {
           nextWorkspaceSessionId
         );
       } else {
-        const response = await fetch(apiUrl(`/api/v1/auth/${mode}`), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+        const data = await apiClient.post<AuthResponse>(`/api/v1/auth/${mode}`, {
+          email,
+          password,
         });
-        let data: AuthResponse | ApiError | null = null;
-        try {
-          data = (await response.json()) as AuthResponse | ApiError;
-        } catch {
-          data = null;
-        }
-        if (!response.ok || !data || !("access_token" in data)) {
-          throw new Error(
-            extractApiErrorMessage(
-              data as ApiError,
-              mode === "login" ? "Sign in failed." : "Account creation failed."
-            )
-          );
-        }
 
         persistSession(data.access_token, data.user, "local", null);
         setAuthError(null);
@@ -907,31 +824,16 @@ export default function App() {
     formData.append("type", type);
 
     try {
-      const response = await fetchWithTimeout(apiUrl("/api/v1/datasets/upload"), {
-        method: "POST",
-        headers: authHeaders(),
-        body: formData,
-      }, 60000); // Higher timeout for heavy uploads
-      let data: DatasetRecord | ApiError | null = null;
-      try {
-        data = (await response.json()) as DatasetRecord | ApiError;
-      } catch {
-        data = null;
-      }
-
-      if (response.status === 401) {
-        handleExpiredSession(
-          extractApiErrorMessage(data as ApiError, "Please sign in again.")
-        );
-        return;
-      }
-
-      if (!response.ok || !data || !("id" in data)) {
-        throw new Error(extractApiErrorMessage(data as ApiError, "Upload failed."));
-      }
-
+      await apiClient.upload("/api/v1/datasets/upload", formData, {
+        authToken,
+        workspaceSessionId,
+      });
       await loadDatasets();
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setUploadError(
         getErrorMessage(
           error,
@@ -959,33 +861,16 @@ export default function App() {
     formData.append("background", file);
 
     try {
-      const response = await fetchWithTimeout(apiUrl("/api/v1/backgrounds/upload"), {
-        method: "POST",
-        headers: authHeaders(),
-        body: formData,
-      }, 45000);
-      let data: BackgroundRecord | ApiError | null = null;
-      try {
-        data = (await response.json()) as BackgroundRecord | ApiError;
-      } catch {
-        data = null;
-      }
-
-      if (response.status === 401) {
-        handleExpiredSession(
-          extractApiErrorMessage(data as ApiError, "Please sign in again.")
-        );
-        return;
-      }
-
-      if (!response.ok || !data || !("id" in data)) {
-        throw new Error(
-          extractApiErrorMessage(data as ApiError, "Background upload failed.")
-        );
-      }
-
+      await apiClient.upload("/api/v1/backgrounds/upload", formData, {
+        authToken,
+        workspaceSessionId,
+      });
       await loadBackgrounds();
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setUploadError(getErrorMessage(error, "Background upload failed."));
     } finally {
       setIsUploading(false);
@@ -997,36 +882,17 @@ export default function App() {
     setBusyDatasetId(datasetId);
     setUploadError(null);
     try {
-      const response = await fetchWithTimeout(apiUrl(`/api/v1/datasets/${datasetId}`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({ display_name: displayName }),
-      }, 15000);
-      let data: DatasetRecord | ApiError | null = null;
-      try {
-        data = (await response.json()) as DatasetRecord | ApiError;
-      } catch {
-        data = null;
-      }
-
-      if (response.status === 401) {
-        handleExpiredSession(
-          extractApiErrorMessage(data as ApiError, "Please sign in again.")
-        );
-        return;
-      }
-
-      if (!response.ok || !data || !("id" in data)) {
-        throw new Error(
-          extractApiErrorMessage(data as ApiError, "Dataset rename failed.")
-        );
-      }
-
+      await apiClient.patch(
+        `/api/v1/datasets/${datasetId}`,
+        { display_name: displayName },
+        { authToken, workspaceSessionId }
+      );
       await loadDatasets();
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setUploadError(getErrorMessage(error, "Dataset rename failed."));
     } finally {
       setBusyDatasetId(null);
@@ -1037,32 +903,16 @@ export default function App() {
     setBusyDatasetId(datasetId);
     setUploadError(null);
     try {
-      const response = await fetchWithTimeout(apiUrl(`/api/v1/datasets/${datasetId}`), {
-        method: "DELETE",
-        headers: authHeaders(),
-      }, 15000);
-      let data: ApiError | null = null;
-      try {
-        data = (await response.json()) as ApiError;
-      } catch {
-        data = null;
-      }
-
-      if (response.status === 401) {
-        handleExpiredSession(
-          extractApiErrorMessage(data, "Please sign in again.")
-        );
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          extractApiErrorMessage(data, "Dataset delete failed.")
-        );
-      }
-
+      await apiClient.delete(`/api/v1/datasets/${datasetId}`, {
+        authToken,
+        workspaceSessionId,
+      });
       await loadDatasets();
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setUploadError(getErrorMessage(error, "Dataset delete failed."));
     } finally {
       setBusyDatasetId(null);
@@ -1073,38 +923,19 @@ export default function App() {
     setBusyBackgroundId(backgroundId);
     setUploadError(null);
     try {
-      const response = await fetchWithTimeout(apiUrl("/api/v1/backgrounds/select"), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({ background_id: backgroundId }),
-      }, 15000);
-      let data: BackgroundListResponse | ApiError | null = null;
-      try {
-        data = (await response.json()) as BackgroundListResponse | ApiError;
-      } catch {
-        data = null;
-      }
-
-      if (response.status === 401) {
-        handleExpiredSession(
-          extractApiErrorMessage(data as ApiError, "Please sign in again.")
-        );
-        return;
-      }
-
-      if (!response.ok || !data || !("items" in data)) {
-        throw new Error(
-          extractApiErrorMessage(data as ApiError, "Background update failed.")
-        );
-      }
-
+      const data = await apiClient.patch<BackgroundListResponse>(
+        "/api/v1/backgrounds/select",
+        { background_id: backgroundId },
+        { authToken, workspaceSessionId }
+      );
       setBackgrounds(data.items);
       setBackgroundLimit(data.background_limit);
       setBackgroundCustomCount(data.custom_count);
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setUploadError(getErrorMessage(error, "Background update failed."));
     } finally {
       setBusyBackgroundId(null);
@@ -1115,36 +946,16 @@ export default function App() {
     setBusyBackgroundId(backgroundId);
     setUploadError(null);
     try {
-      const response = await fetchWithTimeout(
-        apiUrl(`/api/v1/backgrounds/${backgroundId}`),
-        {
-          method: "DELETE",
-          headers: authHeaders(),
-        },
-        15000
-      );
-      let data: ApiError | null = null;
-      try {
-        data = (await response.json()) as ApiError;
-      } catch {
-        data = null;
-      }
-
-      if (response.status === 401) {
-        handleExpiredSession(
-          extractApiErrorMessage(data, "Please sign in again.")
-        );
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          extractApiErrorMessage(data, "Background delete failed.")
-        );
-      }
-
+      await apiClient.delete(`/api/v1/backgrounds/${backgroundId}`, {
+        authToken,
+        workspaceSessionId,
+      });
       await loadBackgrounds();
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setUploadError(getErrorMessage(error, "Background delete failed."));
     } finally {
       setBusyBackgroundId(null);
@@ -1153,7 +964,9 @@ export default function App() {
 
   const handleRender = async () => {
     if (!canRender) {
-      setRenderError("Add at least one completed alphabet dataset before rendering.");
+      setRenderError(
+        "Add at least one completed alphabet dataset before rendering."
+      );
       return;
     }
 
@@ -1162,34 +975,11 @@ export default function App() {
     setPreviewError(null);
 
     try {
-      const renderResponse = await fetchWithTimeout(apiUrl("/api/v1/renders"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({ text, options }),
-      }, 20000);
-
-      let renderPayload: RenderJobResponse | ApiError | null = null;
-      try {
-        renderPayload = (await renderResponse.json()) as RenderJobResponse | ApiError;
-      } catch {
-        renderPayload = null;
-      }
-
-      if (renderResponse.status === 401) {
-        handleExpiredSession(
-          extractApiErrorMessage(renderPayload as ApiError, "Please sign in again.")
-        );
-        return;
-      }
-
-      if (!renderResponse.ok || !renderPayload || !("id" in renderPayload)) {
-        throw new Error(
-          extractApiErrorMessage(renderPayload as ApiError, "Render failed.")
-        );
-      }
+      const renderPayload = await apiClient.post<RenderJobResponse>(
+        "/api/v1/renders",
+        { text, options },
+        { authToken, workspaceSessionId }
+      );
 
       clearPreview();
       setSelectedRenderId(renderPayload.id);
@@ -1203,6 +993,10 @@ export default function App() {
         });
       }, 100);
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setRenderError(getErrorMessage(error, "Render failed."));
     } finally {
       setIsRendering(false);
@@ -1217,31 +1011,19 @@ export default function App() {
   const handleDownloadRender = async (renderId: string) => {
     setBusyRenderId(renderId);
     try {
-      const response = await fetchWithTimeout(apiUrl(`/api/v1/renders/${renderId}/file`), {
-        headers: authHeaders(),
-      }, 30000);
-
-      if (response.status === 401) {
-        handleExpiredSession("Please sign in again.");
-        return;
-      }
-
-      if (!response.ok) {
-        let payload: ApiError | null = null;
-        try {
-          payload = (await response.json()) as ApiError;
-        } catch {
-          payload = null;
-        }
-        throw new Error(
-          extractApiErrorMessage(payload, "The PNG could not be downloaded.")
-        );
-      }
-
-      const blob = await response.blob();
+      const blob = await apiClient.blob(`/api/v1/renders/${renderId}/file`, {
+        authToken,
+        workspaceSessionId,
+      });
       downloadBlob(blob, `handwritten-render-${renderId}.png`);
     } catch (error) {
-      setPreviewError(getErrorMessage(error, "The PNG could not be downloaded."));
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
+      setPreviewError(
+        getErrorMessage(error, "The PNG could not be downloaded.")
+      );
     } finally {
       setBusyRenderId(null);
     }
@@ -1250,33 +1032,19 @@ export default function App() {
   const handleDeleteRender = async (renderId: string) => {
     setBusyRenderId(renderId);
     try {
-      const response = await fetchWithTimeout(apiUrl(`/api/v1/renders/${renderId}`), {
-        method: "DELETE",
-        headers: authHeaders(),
-      }, 15000);
-
-      if (response.status === 401) {
-        handleExpiredSession("Please sign in again.");
-        return;
-      }
-
-      if (!response.ok) {
-        let payload: ApiError | null = null;
-        try {
-          payload = (await response.json()) as ApiError;
-        } catch {
-          payload = null;
-        }
-        throw new Error(
-          extractApiErrorMessage(payload, "Render delete failed.")
-        );
-      }
-
+      await apiClient.delete(`/api/v1/renders/${renderId}`, {
+        authToken,
+        workspaceSessionId,
+      });
       if (selectedRenderId === renderId) {
         clearPreview();
       }
       await loadRenders();
     } catch (error) {
+      if (error instanceof Error && (error as any).status === 401) {
+        handleExpiredSession();
+        return;
+      }
       setPreviewError(getErrorMessage(error, "Render delete failed."));
     } finally {
       setBusyRenderId(null);
@@ -1367,10 +1135,13 @@ export default function App() {
     }
 
     try {
-      void fetchWithTimeout(apiUrl("/api/v1/auth/logout"), {
-        method: "POST",
-        headers: authHeaders(),
-      }, 5000).catch(() => {});
+      void apiClient
+        .post(
+          "/api/v1/auth/logout",
+          {},
+          { authToken, workspaceSessionId }
+        )
+        .catch(() => {});
     } catch {
       // Ignore workspace cleanup failures and still rotate the client workspace id.
     }
@@ -1474,15 +1245,15 @@ export default function App() {
 
     // 2. Trigger backend cleanup in background with timeout
     if (token && workspaceSessionId) {
-      void fetchWithTimeout(apiUrl("/api/v1/auth/logout"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-Workspace-Session": workspaceSessionId,
-        },
-      }, 5000).catch(() => {
-        // Silent catch for background cleanup
-      });
+      void apiClient
+        .post(
+          "/api/v1/auth/logout",
+          {},
+          { authToken: token, workspaceSessionId }
+        )
+        .catch(() => {
+          // Silent catch for background cleanup
+        });
     }
 
     if (token && isHostedAuth) {
@@ -1490,13 +1261,7 @@ export default function App() {
         // Silent catch for background cleanup
       });
     }
-  }, [
-    apiUrl,
-    authToken,
-    clearAuthState,
-    isHostedAuth,
-    workspaceSessionId,
-  ]);
+  }, [authToken, clearAuthState, isHostedAuth, workspaceSessionId]);
 
   const isCodingMode = assignmentMode === "coding";
   const userForAuth = useMemo(() => currentUser ?? readStoredAuthUser(), [currentUser]);
