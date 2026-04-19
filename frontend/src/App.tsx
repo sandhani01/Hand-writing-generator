@@ -11,7 +11,6 @@ import {
   persistWorkspaceSessionId,
   readStoredAuthSession,
   readStoredAuthUser,
-  readStoredWorkspaceSessionId,
 } from "./authStorage";
 import { authProvider, authProviderLabel } from "./authConfig";
 import { AuthScreen } from "./components/AuthScreen";
@@ -83,16 +82,6 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function createWorkspaceSessionId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `ws-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
-}
-
-const DEFAULTS_FETCH_TIMEOUT_MS = 8000;
-const WORKSPACE_VERIFY_TIMEOUT_MS = 12000;
-const WORKSPACE_ASSET_TIMEOUT_MS = 12000;
 const WORKSPACE_BOOT_SOFT_RELEASE_MS = 3500;
 const REQUEST_TIMEOUT_MESSAGE = "The server took too long to respond.";
 
@@ -114,34 +103,11 @@ function isRecoverableWorkspaceBootError(error: unknown) {
   );
 }
 
-async function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init: RequestInit = {},
-  timeoutMs = WORKSPACE_ASSET_TIMEOUT_MS
-) {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(input, {
-      ...init,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (isAbortError(error)) {
-      throw new Error(REQUEST_TIMEOUT_MESSAGE);
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
-}
 
 export default function App() {
   const apiBase =
     ((import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env
       ?.VITE_API_BASE || "").replace(/\/$/, "");
-  const apiUrl = useCallback((path: string) => `${apiBase}${path}`, [apiBase]);
   const isHostedAuth = authProvider === "supabase";
   const initialStoredSession = readStoredAuthSession();
   const hasStoredProviderMismatch = Boolean(

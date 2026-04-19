@@ -16,6 +16,7 @@ export type RenderOptions = {
   marginRight: number;
   marginBottom: number;
   baselineJitter: number;
+  lineStartJitter: number;
   lineDriftPerWord: number;
   wordSpacingJitter: number;
   rotation: number;

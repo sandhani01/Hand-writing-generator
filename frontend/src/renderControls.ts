@@ -36,6 +36,7 @@ export const FALLBACK_OPTIONS: RenderOptions = {
   marginRight: 10,
   marginBottom: 40,
   baselineJitter: 0.7,
+  lineStartJitter: 2.0,
   lineDriftPerWord: 0.18,
   wordSpacingJitter: 3,
   rotation: 2,
@@ -246,6 +247,15 @@ export const ADVANCED_GROUPS: ControlGroup[] = [
         step: 0.05,
         description: "Tiny up and down movement of individual glyphs.",
         format: (value) => value.toFixed(2),
+      },
+      {
+        key: "lineStartJitter",
+        label: "Line start wobble",
+        min: 0,
+        max: 30,
+        step: 0.5,
+        description: "Random horizontal offset at the beginning of each line.",
+        format: (value) => value.toFixed(1),
       },
       {
         key: "lineDriftPerWord",
