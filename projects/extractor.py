@@ -708,7 +708,8 @@ PERSPECTIVE_OUTPUT_SIZE = 2400
 def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT_4X4_50):
     """
     Find the grid border using 4 ArUco markers at the corners.
-    Implements a multi-pass search to handle bad lighting, shadows, and glares.
+    Accumulates successfully detected markers across multiple image processing passes.
+    If only 3 markers are found, it estimates the 4th marker's position geometrically.
     """
     if image.ndim == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -717,86 +718,133 @@ def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(dictionary_id)
     
-    # 1. Setup Robust Parameters
+    # 1. Setup Detector and Parameters
     parameters = cv2.aruco.DetectorParameters()
-    # Smaller step helps with uneven lighting/shadows across a single marker
-    parameters.adaptiveThreshWinSizeStep = 4 
-    # Catch markers even if they are right at the image edge
+    parameters.adaptiveThreshWinSizeStep = 3 # Finer step for robust discovery
     parameters.minDistanceToBorder = 0
-    # Allow slightly smaller markers in the frame
-    parameters.minMarkerPerimeterRate = 0.02
+    parameters.minMarkerPerimeterRate = 0.01 # Allow smaller markers in frame
     
     detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
-    # 2. Multi-Pass Search Strategy
-    # We track the "best" result (most markers found) to report to the user if we fail.
-    global_best_ids = []
-    global_best_corners = None
+    # 2. Sequential Discovery across multiple passes
+    found_markers = {} # marker_id -> corners (4, 2)
     
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     
-    # We expand the passes to handle noise (Blur) and low contrast (CLAHE)
+    def try_detect(img, pass_name):
+        corners, ids, rejected = detector.detectMarkers(img)
+        if ids is not None:
+            ids = ids.flatten()
+            for i, mid in enumerate(ids):
+                if mid in marker_ids and mid not in found_markers:
+                    # Refine corner to sub-pixel accuracy
+                    c = corners[i].reshape((4, 2))
+                    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+                    refined = cv2.cornerSubPix(gray, c.astype(np.float32), (5, 5), (-1, -1), criteria)
+                    found_markers[mid] = refined
+                    print(f"Pass '{pass_name}': Found Marker {mid}")
+        return rejected
+
+    # Standard set of image enhancement passes
     passes = [
         ("Standard", gray),
-        ("CLAHE (Local Contrast)", clahe.apply(gray)),
-        ("Denoised + CLAHE", clahe.apply(cv2.fastNlMeansDenoising(gray, None, 10, 7, 21))),
-        ("Blurred", cv2.GaussianBlur(gray, (3, 3), 0)),
+        ("CLAHE", clahe.apply(gray)),
+        ("Denoised", cv2.fastNlMeansDenoising(gray, None, 10, 7, 21)),
+        ("Blurred", cv2.GaussianBlur(gray, (5, 5), 0)),
         ("Contrast-Stretch", cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)),
     ]
 
-    detected_anything = False
     last_rejected = None
-    
-    for pass_name, search_img in passes:
-        corners, ids, rejected = detector.detectMarkers(search_img)
-        last_rejected = rejected
-        
-        if ids is not None:
-            detected_anything = True
-            found_ids = ids.flatten().tolist()
-            
-            # Keep track of the pass that found the MOST markers
-            if len(found_ids) > len(global_best_ids):
-                global_best_ids = found_ids
-                global_best_corners = corners
-            
-            if all(mid in found_ids for mid in marker_ids):
-                print(f"ArUco Detection SUCCESS during {pass_name} pass.")
-                # Select only the outermost corner for each of the 4 markers
-                # c[0] is the (4, 2) corner array. Corners are: 0:TL, 1:TR, 2:BR, 3:BL
-                return np.array([
-                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[0]][0][0], # TL marker's TL corner
-                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[1]][0][1], # TR marker's TR corner
-                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[2]][0][2], # BR marker's BR corner
-                    [c[0] for c, id_val in zip(corners, found_ids) if id_val == marker_ids[3]][0][3], # BL marker's BL corner
-                ], dtype=np.float32)
-            else:
-                print(f"ArUco Pass {pass_name}: Found {found_ids}, missing: {[m for m in marker_ids if m not in found_ids]}")
-        else:
-            print(f"ArUco Pass {pass_name}: No markers detected.")
+    for name, img in passes:
+        rej = try_detect(img, name)
+        if rej is not None:
+            last_rejected = rej
+        if len(found_markers) >= 4:
+            break
 
-    # If we reached here, we failed to find all 4 markers in a single pass
-    missing = [m for m in marker_ids if m not in global_best_ids]
-    
-    # Save a debug image for the user to troubleshoot
-    debug_save_path = "aruco_discovery_fail_debug.png"
-    debug_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-    
-    # Draw successfully detected markers in green
-    if global_best_corners is not None:
-        cv2.aruco.drawDetectedMarkers(debug_img, global_best_corners, np.array(global_best_ids))
-    
-    # Draw rejected candidates in red (these are often the "missing" markers that were too blurry/dark)
-    if last_rejected is not None:
-        cv2.aruco.drawDetectedMarkers(debug_img, last_rejected, borderColor=(0, 0, 255))
+    # 3. Handle results and advanced fallbacks
+    if len(found_markers) < 3:
+        print("Standard passes failed. Trying advanced parameter sweep and morphology...")
         
-    cv2.imwrite(debug_save_path, debug_img)
+        # Pass 6: Aggressive Contrast + Dilation (helps with faint markers)
+        stretched = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
+        dilated = cv2.dilate(stretched, np.ones((3, 3), np.uint8))
+        try_detect(dilated, "Aggressive Dilation")
+        
+        # Pass 7: Parameter Sweep
+        if len(found_markers) < 3:
+            for win_size_min in [3, 11, 21]:
+                if len(found_markers) >= 4: break
+                parameters.adaptiveThreshWinSizeMin = win_size_min
+                detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+                try_detect(gray, f"Sweep-WinMin-{win_size_min}")
+
+    # 4. Handle results and geometric fallbacks
+    found_ids = sorted(list(found_markers.keys()))
     
-    raise RuntimeError(
-        f"Could not find all 4 ArUco markers. Required: {list(marker_ids)}. "
-        f"Found only: {global_best_ids}. Missing: {missing}. \n"
-        f"Check lighting and ensure markers are not cut off. See red boxes in: {debug_save_path}"
-    )
+    if len(found_markers) < 3:
+        # Save debug image
+        debug_path = "aruco_discovery_critical_fail.png"
+        debug_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+        if found_markers:
+            for mid, m_corners in found_markers.items():
+                cv2.aruco.drawDetectedMarkers(debug_img, [m_corners.reshape(1, 4, 2)], np.array([mid]))
+        if last_rejected is not None:
+            cv2.aruco.drawDetectedMarkers(debug_img, last_rejected, borderColor=(0, 0, 255))
+        cv2.imwrite(debug_path, debug_img)
+        
+        raise RuntimeError(
+            f"Failed to find sufficient ArUco markers. Found: {found_ids}. Required: {list(marker_ids)}. "
+            f"Check lighting and ensures markers are not cut off. Debug: {debug_path}"
+        )
+
+    # Mapping of which marker index corresponds to which grid corner
+    # index 0: TL corner of marker, 1: TR corner of marker, 2: BR corner of marker, 3: BL corner of marker
+    corner_map = {
+        marker_ids[0]: 0, # TL marker uses its TL corner
+        marker_ids[1]: 1, # TR marker uses its TR corner
+        marker_ids[2]: 2, # BR marker uses its BR corner
+        marker_ids[3]: 3, # BL marker uses its BL corner
+    }
+
+    if len(found_markers) == 3:
+        # GEOMETRIC ESTIMATION OF 4TH MARKER
+        missing_id = [m for m in marker_ids if m not in found_markers][0]
+        print(f"ATTENTION: Marker {missing_id} missing. Estimating position from geometry...")
+        
+        # We need the "representative" corner point from each of the 3 found markers
+        # to estimate the 4th corner point.
+        pts = {}
+        for mid, m_corners in found_markers.items():
+             pts[mid] = m_corners[corner_map[mid]]
+             
+        # Parallelogram law: Vector(A,B) = Vector(D,C) => C = B + D - A
+        # Based on marker_ids=(0,1,2,3) -> (TL, TR, BR, BL)
+        if missing_id == marker_ids[0]: # TL missing
+            estimated_pt = pts[marker_ids[1]] + pts[marker_ids[3]] - pts[marker_ids[2]]
+        elif missing_id == marker_ids[1]: # TR missing
+            estimated_pt = pts[marker_ids[0]] + pts[marker_ids[2]] - pts[marker_ids[3]]
+        elif missing_id == marker_ids[2]: # BR missing
+            estimated_pt = pts[marker_ids[1]] + pts[marker_ids[3]] - pts[marker_ids[0]]
+        else: # BL missing
+            estimated_pt = pts[marker_ids[0]] + pts[marker_ids[2]] - pts[marker_ids[1]]
+            
+        return np.array([
+            pts.get(marker_ids[0], estimated_pt if missing_id == marker_ids[0] else None),
+            pts.get(marker_ids[1], estimated_pt if missing_id == marker_ids[1] else None),
+            pts.get(marker_ids[2], estimated_pt if missing_id == marker_ids[2] else None),
+            pts.get(marker_ids[3], estimated_pt if missing_id == marker_ids[3] else None),
+        ], dtype=np.float32)
+
+    # Typical case: All 4 found
+    print("SUCCESS: All 4 ArUco markers detected.")
+    return np.array([
+        found_markers[marker_ids[0]][0],
+        found_markers[marker_ids[1]][1],
+        found_markers[marker_ids[2]][2],
+        found_markers[marker_ids[3]][3],
+    ], dtype=np.float32)
+
 
 
 

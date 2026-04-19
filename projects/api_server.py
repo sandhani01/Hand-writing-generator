@@ -99,6 +99,7 @@ def build_frontend_default_options():
         "marginRight": int(cfg["margin_right"]),
         "marginBottom": int(cfg["margin_bottom"]),
         "baselineJitter": float(cfg["baseline_jitter"]),
+        "lineStartJitter": float(cfg.get("line_start_jitter", 0.0)),
         "lineDriftPerWord": float(cfg["line_drift_per_word"]),
         "wordSpacingJitter": float(cfg["word_spacing_jitter"]),
         "rotation": rotation,
@@ -317,7 +318,10 @@ def build_render_config(options):
 
     jitter = to_float(options.get("jitter"), 0.0)
     cfg["baseline_jitter"] = to_float(
-        options.get("baselineJitter"), max(0.0, jitter * 0.25)
+        options.get("baselineJitter"), cfg["baseline_jitter"]
+    )
+    cfg["line_start_jitter"] = to_float(
+        options.get("lineStartJitter"), cfg.get("line_start_jitter", 0.0)
     )
     cfg["line_drift_per_word"] = to_float(
         options.get("lineDriftPerWord"), max(0.0, jitter * 0.15)

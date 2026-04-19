@@ -36,6 +36,7 @@ DEFAULT_CFG = {
     "word_spacing": 26,
     "word_spacing_jitter": 3,
     "line_drift_per_word": 0.18,
+    "line_start_jitter": 2.0,
     "baseline_jitter": 0.7,
 
     "rotation_range": (-2.0, 2.0),
@@ -674,7 +675,10 @@ def render_text(text, library, cfg):
         if baseline > max_baseline:
             break
 
-        x = margin_left
+        x = margin_left + random.uniform(
+            -cfg.get("line_start_jitter", 0.0),
+            cfg.get("line_start_jitter", 0.0)
+        )
         line_drift = 0.0
 
         if line == "":
