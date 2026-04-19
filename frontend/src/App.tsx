@@ -85,9 +85,6 @@ function downloadBlob(blob: Blob, filename: string) {
 const WORKSPACE_BOOT_SOFT_RELEASE_MS = 3500;
 const REQUEST_TIMEOUT_MESSAGE = "The server took too long to respond.";
 
-function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === "AbortError";
-}
 
 function isRecoverableWorkspaceBootError(error: unknown) {
   if (!(error instanceof Error)) {
@@ -105,9 +102,6 @@ function isRecoverableWorkspaceBootError(error: unknown) {
 
 
 export default function App() {
-  const apiBase =
-    ((import.meta as unknown as { env?: { VITE_API_BASE?: string } }).env
-      ?.VITE_API_BASE || "").replace(/\/$/, "");
   const isHostedAuth = authProvider === "supabase";
   const initialStoredSession = readStoredAuthSession();
   const hasStoredProviderMismatch = Boolean(
