@@ -602,14 +602,47 @@ def paste_with_texture(page, glyph_rgba, x, y, cfg):
     page.paste(patch, (x1, y1))
 
 
-def render_char(page, char, library, cfg, x, baseline, glyph_cache):
-    folder = get_folder_name(char)
-    samples = library.get(folder)
+class GlyphSampler:
+    """Manages character pools to ensure variety and avoid immediate repetition."""
+    def __init__(self, library):
+        self.library = library
+        self.pools = {}  # folder -> list of images (the current shuffle)
+        self.last_indices = {}  # folder -> last sample index used
 
-    if not samples:
+    def get_sample(self, char):
+        folder = get_folder_name(char)
+        samples = self.library.get(folder)
+        
+        if not samples:
+            return None
+
+        if len(samples) == 1:
+            return samples[0]
+
+        # Initialize or refill pool if empty
+        if not self.pools.get(folder):
+            indices = list(range(len(samples)))
+            
+            # Shuffle until the element to be popped is different from the last used
+            last_idx = self.last_indices.get(folder)
+            max_attempts = 10
+            for _ in range(max_attempts):
+                random.shuffle(indices)
+                if indices[-1] != last_idx:
+                    break
+            
+            self.pools[folder] = indices
+
+        # Pick next index
+        idx = self.pools[folder].pop()
+        self.last_indices[folder] = idx
+        return samples[idx]
+
+
+def render_char(page, char, glyph, cfg, x, baseline):
+    if not glyph:
         return x + cfg["word_spacing"]
 
-    glyph = random.choice(samples)
     metrics = get_char_metrics(char, cfg)
     draw_x = x + metrics["char_spacing_before_delta"]
 
@@ -659,7 +692,7 @@ def render_char(page, char, library, cfg, x, baseline, glyph_cache):
 
 
 def render_text(text, library, cfg):
-
+    sampler = GlyphSampler(library)
     page = load_background(cfg)
 
     margin_left = cfg["margin_left"]
@@ -710,14 +743,14 @@ def render_text(text, library, cfg):
                 line_drift = 0.0
 
             for char in token:
+                glyph = sampler.get_sample(char)
                 x = render_char(
                     page,
                     char,
-                    library,
+                    glyph,
                     cfg,
                     x,
-                    baseline + line_drift,
-                    None
+                    baseline + line_drift
                 )
 
     return page
