@@ -11,7 +11,6 @@ import { ComposeSection } from "./components/ComposeSection";
 import { DatasetSection } from "./components/DatasetSection";
 import { DemoTour } from "./components/DemoTour";
 import { PreviewSection } from "./components/PreviewSection";
-import { ThemeToggle } from "./components/ThemeToggle";
 import { TuningSection } from "./components/TuningSection";
 import { ImportConfigModal } from "./components/ImportConfigModal";
 import { useTheme } from "./useTheme";
@@ -25,14 +24,17 @@ import {
 } from "./renderControls";
 import type {
   AssignmentMode,
+  BackgroundListResponse,
   BackgroundRecord,
+  CharacterOverrideKey,
+  DatasetListResponse,
   DatasetRecord,
+  DefaultsResponse,
   NumericOptionKey,
   RenderJobResponse,
   RenderOptions,
   UploadCounts,
   UploadType,
-  UserProfile,
 } from "./types";
 
 const EMPTY_COUNTS: UploadCounts = {
@@ -59,13 +61,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function App() {
 
-  const [authToken, setAuthToken] = useState<string | null>("anonymous-token");
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>({
-    email: "anonymous@local.dev",
-    id: "anonymous-user",
-    auth_mode: "none",
-    created_at: new Date().toISOString(),
-  });
+  const authToken = "anonymous-token";
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(
     null
   );
@@ -151,8 +147,6 @@ export default function App() {
       return null;
     });
   }, []);
-    []
-  );
 
   const setNumericOption = (key: NumericOptionKey, value: number) => {
     setOptions((current) => ({ ...current, [key]: value }));
@@ -209,7 +203,7 @@ export default function App() {
         setDatasets(data.items);
       } catch (error) {
         if (error instanceof Error && (error as any).status === 401) {
-          handleExpiredSession();
+          // Silent catch
           return;
         }
         setUploadError(
@@ -222,7 +216,7 @@ export default function App() {
         setIsLoadingDatasets(false);
       }
     },
-    [authToken, handleExpiredSession, workspaceSessionId]
+    [authToken, workspaceSessionId]
   );
 
   const loadBackgrounds = useCallback(
@@ -247,7 +241,7 @@ export default function App() {
         setBackgroundCustomCount(data.custom_count);
       } catch (error) {
         if (error instanceof Error && (error as any).status === 401) {
-          handleExpiredSession();
+          // Silent catch
           return;
         }
         setUploadError(
@@ -255,7 +249,7 @@ export default function App() {
         );
       }
     },
-    [authToken, handleExpiredSession, workspaceSessionId]
+    [authToken, workspaceSessionId]
   );
 
   const loadRenders = useCallback(
@@ -287,7 +281,7 @@ export default function App() {
         });
       } catch (error) {
         if (error instanceof Error && (error as any).status === 401) {
-          handleExpiredSession();
+          // Silent catch
           return;
         }
         setPreviewError(
@@ -300,70 +294,9 @@ export default function App() {
         setIsLoadingRenders(false);
       }
     },
-    [authToken, clearPreview, handleExpiredSession, workspaceSessionId]
+    [authToken, clearPreview, workspaceSessionId]
   );
 
-  const bootstrapAuthenticatedWorkspace = useCallback(
-    async (
-      accessToken: string,
-      provider: AuthProviderMode,
-      refreshTokenValue: string | null = null,
-      workspaceOverride?: string
-    ) => {
-      const attemptVerification = async (token: string) => {
-        const { response, data } = await fetchCurrentUser(token, workspaceOverride);
-        if (!response.ok || !data || !("email" in data)) {
-          throw new Error(
-            extractApiErrorMessage(
-              data as ApiError,
-              "Could not verify the authenticated user."
-            )
-          );
-        }
-        return data;
-      };
-
-      let verifiedToken = accessToken;
-      let verifiedRefreshToken = refreshTokenValue;
-
-      try {
-        const user = await attemptVerification(verifiedToken);
-        persistSession(verifiedToken, user, provider, verifiedRefreshToken);
-        setAuthError(null);
-        void Promise.allSettled([
-          loadDatasets(verifiedToken, workspaceOverride),
-          loadBackgrounds(verifiedToken, workspaceOverride),
-          loadRenders(verifiedToken, workspaceOverride),
-        ]);
-        return;
-      } catch (error) {
-        const message = getErrorMessage(error, "Could not verify the authenticated user.");
-        if (provider !== "supabase" || !verifiedRefreshToken) {
-          throw new Error(message);
-        }
-      }
-
-      const refreshed = await refreshSupabaseSession(verifiedRefreshToken);
-      verifiedToken = refreshed.accessToken;
-      verifiedRefreshToken = refreshed.refreshToken ?? verifiedRefreshToken;
-
-      const refreshedUser = await attemptVerification(verifiedToken);
-      persistSession(verifiedToken, refreshedUser, provider, verifiedRefreshToken);
-      setAuthError(null);
-      void Promise.allSettled([
-        loadDatasets(verifiedToken, workspaceOverride),
-        loadBackgrounds(verifiedToken, workspaceOverride),
-        loadRenders(verifiedToken, workspaceOverride),
-      ]);
-    },
-    [
-      fetchCurrentUser,
-      loadBackgrounds,
-      loadDatasets,
-      loadRenders,
-      persistSession,
-    ]
-  );
 
   const fetchRenderPreview = useCallback(
     async (renderId: string, tokenOverride?: string) => {
@@ -383,7 +316,7 @@ export default function App() {
         setPreviewUrl(URL.createObjectURL(blob));
       } catch (error) {
         if (error instanceof Error && (error as any).status === 401) {
-          handleExpiredSession();
+          // Silent catch
           return;
         }
         clearPreview();
@@ -392,7 +325,7 @@ export default function App() {
         setIsPreviewLoading(false);
       }
     },
-    [authToken, clearPreview, handleExpiredSession, workspaceSessionId]
+    [authToken, clearPreview, workspaceSessionId]
   );
 
   useEffect(() => {
@@ -415,7 +348,6 @@ export default function App() {
       }
       workspaceBootKeyRef.current = activeWorkspaceSessionId;
 
-      setIsAuthChecking(true);
       try {
         await Promise.allSettled([
           loadRendererDefaults(),
@@ -424,47 +356,14 @@ export default function App() {
           loadRenders(authToken!, activeWorkspaceSessionId),
         ]);
       } finally {
-        setIsAuthChecking(false);
+        // Done loading
       }
     };
 
     void bootWorkspace();
     return () => {
     };
-  }, [
-    authToken,
-    bootstrapAuthenticatedWorkspace,
-    loadBackgrounds,
-    loadDatasets,
-    loadRenders,
-    persistWorkspaceSession,
-    refreshToken,
-    handleExpiredSession,
-    workspaceSessionId,
-  ]);
-
-  useEffect(() => {
-    if (!refreshToken || authProvider !== "supabase") {
-      return;
-    }
-
-    const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
-    const heartbeatId = window.setInterval(async () => {
-      try {
-        const refreshed = await refreshSupabaseSession(refreshToken);
-        persistSession(
-          refreshed.accessToken,
-          currentUser!,
-          "supabase",
-          refreshed.refreshToken
-        );
-      } catch {
-        // Heartbeat failure is non-critical if silent refresh exists in apiClient
-      }
-    }, HEARTBEAT_INTERVAL_MS);
-
-    return () => window.clearInterval(heartbeatId);
-  }, [currentUser, persistSession, refreshToken]);
+  }, [authToken, loadBackgrounds, loadDatasets, loadRenders, workspaceSessionId]);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -557,10 +456,6 @@ export default function App() {
       });
       await loadDatasets();
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setUploadError(
         getErrorMessage(
           error,
@@ -594,10 +489,6 @@ export default function App() {
       });
       await loadBackgrounds();
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setUploadError(getErrorMessage(error, "Background upload failed."));
     } finally {
       setIsUploading(false);
@@ -616,10 +507,6 @@ export default function App() {
       );
       await loadDatasets();
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setUploadError(getErrorMessage(error, "Dataset rename failed."));
     } finally {
       setBusyDatasetId(null);
@@ -636,10 +523,6 @@ export default function App() {
       });
       await loadDatasets();
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setUploadError(getErrorMessage(error, "Dataset delete failed."));
     } finally {
       setBusyDatasetId(null);
@@ -659,10 +542,6 @@ export default function App() {
       setBackgroundLimit(data.background_limit);
       setBackgroundCustomCount(data.custom_count);
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setUploadError(getErrorMessage(error, "Background update failed."));
     } finally {
       setBusyBackgroundId(null);
@@ -679,10 +558,6 @@ export default function App() {
       });
       await loadBackgrounds();
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setUploadError(getErrorMessage(error, "Background delete failed."));
     } finally {
       setBusyBackgroundId(null);
@@ -720,10 +595,6 @@ export default function App() {
         });
       }, 100);
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setRenderError(getErrorMessage(error, "Render failed."));
     } finally {
       setIsRendering(false);
@@ -744,10 +615,6 @@ export default function App() {
       });
       downloadBlob(blob, `handwritten-render-${renderId}.png`);
     } catch (error) {
-      if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
-        return;
-      }
       setPreviewError(
         getErrorMessage(error, "The PNG could not be downloaded.")
       );
@@ -769,7 +636,7 @@ export default function App() {
       await loadRenders();
     } catch (error) {
       if (error instanceof Error && (error as any).status === 401) {
-        handleExpiredSession();
+        
         return;
       }
       setPreviewError(getErrorMessage(error, "Render delete failed."));
@@ -809,14 +676,14 @@ export default function App() {
       const nextCharOverride = {
         ...EMPTY_CHARACTER_OVERRIDE,
         ...existing,
-        [key]: EMPTY_CHARACTER_OVERRIDE[key],
+        [key]: EMPTY_CHARACTER_OVERRIDE[key as CharacterOverrideKey],
       };
 
       const isDefault = (
         Object.keys(EMPTY_CHARACTER_OVERRIDE) as CharacterOverrideKey[]
       ).every(
         (overrideKey) =>
-          nextCharOverride[overrideKey] === EMPTY_CHARACTER_OVERRIDE[overrideKey]
+          nextCharOverride[overrideKey as CharacterOverrideKey] === EMPTY_CHARACTER_OVERRIDE[overrideKey as CharacterOverrideKey]
       );
 
       const nextOverrides = { ...current.charOverrides };
@@ -874,7 +741,7 @@ export default function App() {
     }
 
     const nextWorkspaceSessionId = createWorkspaceSessionId();
-    persistWorkspaceSession(nextWorkspaceSessionId);
+    setWorkspaceSessionId(nextWorkspaceSessionId);
     setAvailableCounts(EMPTY_COUNTS);
     setDatasets([]);
     setBackgrounds(EMPTY_BACKGROUNDS);
@@ -960,7 +827,6 @@ export default function App() {
 
 
   const isCodingMode = assignmentMode === "coding";
-  const userForAuth = useMemo(() => currentUser, [currentUser]);
   const previewStatusLabel = selectedRender
     ? selectedRender.status === "completed"
       ? `Ready since ${new Intl.DateTimeFormat(undefined, {
