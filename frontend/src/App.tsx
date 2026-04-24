@@ -82,38 +82,17 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const WORKSPACE_BOOT_SOFT_RELEASE_MS = 3500;
-const REQUEST_TIMEOUT_MESSAGE = "The server took too long to respond.";
-
-
-function isRecoverableWorkspaceBootError(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    error.message === REQUEST_TIMEOUT_MESSAGE ||
-    message.includes("failed to fetch") ||
-    message.includes("networkerror") ||
-    message.includes("load failed")
-  );
-}
 
 
 export default function App() {
   const isHostedAuth = authProvider === "supabase";
-  const initialStoredSession = readStoredAuthSession();
-  const hasStoredProviderMismatch = Boolean(
-    initialStoredSession && initialStoredSession.provider !== authProvider
-  );
-  const initialSession =
-    hasStoredProviderMismatch ? null : initialStoredSession;
 
   const [authToken, setAuthToken] = useState<string | null>("anonymous-token");
   const [currentUser, setCurrentUser] = useState<UserProfile | null>({
     email: "anonymous@local.dev",
     id: "anonymous-user",
+    auth_mode: "none",
+    created_at: new Date().toISOString(),
   });
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(
@@ -129,7 +108,6 @@ export default function App() {
   const [isAuthChecking, setIsAuthChecking] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [showEmergencyLogout, setShowEmergencyLogout] = useState(false);
 
   const [availableCounts, setAvailableCounts] = useState<UploadCounts>(EMPTY_COUNTS);
   const [datasets, setDatasets] = useState<DatasetRecord[]>([]);
@@ -527,8 +505,6 @@ export default function App() {
   }, [hasStoredProviderMismatch]);
 
   useEffect(() => {
-    let cancelled = false;
-    let releaseLoaderId: number | null = null;
 
     const bootWorkspace = async () => {
       const activeWorkspaceSessionId =
@@ -558,7 +534,6 @@ export default function App() {
 
     void bootWorkspace();
     return () => {
-      cancelled = true;
     };
   }, [
     authToken,
@@ -1184,7 +1159,7 @@ export default function App() {
     return (
       <div className="app app--gate">
         <div className="gate-topbar">
-          <span className="gate-brand">Handwritten Notes</span>
+          <span className="gate-brand">Handwritten Notes Generator</span>
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <section
@@ -1297,14 +1272,12 @@ export default function App() {
       <AppHeader
         isCodingMode={isCodingMode}
         theme={theme}
-        userEmail={currentUser.email}
         onToggleTheme={toggleTheme}
         onChangeAssignmentType={openAssignmentPicker}
         onRefreshLibrary={() =>
           void Promise.all([loadDatasets(), loadBackgrounds(), loadRenders()])
         }
         onResetWorkspace={() => void resetWorkspace()}
-        onLogout={handleLogout}
         onRender={handleRender}
         canRender={canRender}
         isRendering={isRendering}

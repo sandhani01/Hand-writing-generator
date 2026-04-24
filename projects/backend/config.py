@@ -86,7 +86,7 @@ class Settings:
         self.storage_use_ssl = _env_flag("HANDWRITING_STORAGE_USE_SSL", True)
         self.api_title = os.environ.get(
             "HANDWRITING_API_TITLE",
-            "Handwritten Notes Backend",
+            "Handwritten Notes Generator Backend",
         )
         self.auth_mode = os.environ.get("HANDWRITING_AUTH_MODE", "none").lower()
         self.supabase_url = os.environ.get("HANDWRITING_SUPABASE_URL", "").strip().rstrip("/")

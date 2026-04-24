@@ -22,7 +22,7 @@ export function AssignmentGate({
         Skip to choices
       </a>
       <div className="gate-topbar">
-        <span className="gate-brand">Handwritten Notes</span>
+        <span className="gate-brand">Handwritten Notes Generator</span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>

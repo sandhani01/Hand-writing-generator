@@ -3,12 +3,10 @@ import { ThemeToggle } from "./ThemeToggle";
 type Props = {
   isCodingMode: boolean;
   theme: "dark" | "light";
-  userEmail: string;
   onToggleTheme: () => void;
   onChangeAssignmentType: () => void;
   onRefreshLibrary: () => void;
   onResetWorkspace: () => void;
-  onLogout: () => void;
   onRender: () => void;
   isLoadingDatasets: boolean;
   isRendering: boolean;
@@ -18,12 +16,10 @@ type Props = {
 export function AppHeader({
   isCodingMode,
   theme,
-  userEmail,
   onToggleTheme,
   onChangeAssignmentType,
   onRefreshLibrary,
   onResetWorkspace,
-  onLogout,
   onRender,
   isLoadingDatasets,
   isRendering,
@@ -34,7 +30,7 @@ export function AppHeader({
       <div className="app-header__brand">
         <div className="app-header__logo-group" onClick={onRefreshLibrary} title="Refresh Workspace">
           <div className="app-header__logo-mark" aria-hidden="true" />
-          <span className="app-header__brand-name">Handwritten Notes</span>
+          <span className="app-header__brand-name">Handwritten Notes Generator</span>
         </div>
         <div className="app-header__separator" aria-hidden="true" />
         <span className={`mode-badge ${isCodingMode ? "mode-badge--coding" : ""}`}>

@@ -58,7 +58,7 @@ export function AuthScreen({
         Skip to sign in form
       </a>
       <div className="gate-topbar">
-        <span className="gate-brand">Handwritten Notes</span>
+        <span className="gate-brand">Handwritten Notes Generator</span>
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
 

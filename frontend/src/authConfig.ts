@@ -27,22 +27,12 @@ function normalizeProvider(raw: string | undefined): AuthProviderMode | null {
 }
 
 const env = readEnv();
-const explicitProvider = normalizeProvider(env.VITE_AUTH_PROVIDER);
-const hasSupabaseConfig = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY);
-
 export const authProvider: AuthProviderMode = "local";
 
-export const authProviderLabel =
-  authProvider === "supabase" ? "Supabase secured" : "Local account";
+export const authProviderLabel = "Local account";
 
-export const supabaseConfig =
-  authProvider === "supabase" && env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY
-    ? {
-        url: env.VITE_SUPABASE_URL.replace(/\/$/, ""),
-        anonKey: env.VITE_SUPABASE_ANON_KEY,
-      }
-    : null;
+export const supabaseConfig = null;
 
 export function isHostedAuthEnabled() {
-  return authProvider === "supabase" && supabaseConfig !== null;
+  return false;
 }
