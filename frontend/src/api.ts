@@ -1,10 +1,4 @@
 import { isHostedAuthEnabled } from "./authConfig";
-import {
-  persistAuthRefreshToken,
-  persistAuthToken,
-  readStoredRefreshToken,
-} from "./authStorage";
-import { refreshSupabaseSession } from "./providerAuth";
 import type { ApiError } from "./types";
 
 const API_TIMEOUT_MS = 15000;
@@ -61,7 +55,6 @@ async function fetchWithTimeout(
   }
 }
 
-let isRefreshing = false;
 
 export async function apiFetch<T>(
   path: string,
@@ -71,31 +64,6 @@ export async function apiFetch<T>(
   const url = `${apiBase}${path}`;
 
   const response = await fetchWithTimeout(url, options);
-
-  if (response.status === 401 && !isRefreshing && isHostedAuthEnabled()) {
-    const refreshToken = readStoredRefreshToken();
-    if (refreshToken) {
-      isRefreshing = true;
-      try {
-        const refreshed = await refreshSupabaseSession(refreshToken);
-        persistAuthToken(refreshed.accessToken, "supabase");
-        persistAuthRefreshToken(refreshed.refreshToken);
-
-        // Retry with new token
-        const retryOptions = {
-          ...options,
-          authToken: refreshed.accessToken,
-        };
-        const retryResponse = await fetchWithTimeout(url, retryOptions);
-        return handleApiResponse<T>(retryResponse);
-      } catch (refreshError) {
-        // Fall through to standard 401 handling if refresh fails
-        console.error("Silent refresh failed:", refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-  }
 
   return handleApiResponse<T>(response);
 }

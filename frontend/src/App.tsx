@@ -4,16 +4,7 @@ import {
   persistAssignmentMode,
   readStoredAssignmentMode,
 } from "./assignmentModeStorage";
-import {
-  clearStoredAuthSession,
-  clearStoredWorkspaceSessionId,
-  persistAuthSession,
-  persistWorkspaceSessionId,
-  readStoredAuthSession,
-  readStoredAuthUser,
-} from "./authStorage";
-import { authProvider, authProviderLabel } from "./authConfig";
-import { AuthScreen } from "./components/AuthScreen";
+import { apiClient } from "./api";
 import { AppHeader } from "./components/AppHeader";
 import { AssignmentGate } from "./components/AssignmentGate";
 import { ComposeSection } from "./components/ComposeSection";
@@ -23,13 +14,6 @@ import { PreviewSection } from "./components/PreviewSection";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { TuningSection } from "./components/TuningSection";
 import { ImportConfigModal } from "./components/ImportConfigModal";
-import {
-  logoutSupabaseSession,
-  refreshSupabaseSession,
-  signInWithSupabasePassword,
-  signUpWithSupabasePassword,
-} from "./providerAuth";
-import { apiClient } from "./api";
 import { useTheme } from "./useTheme";
 import {
   DEFAULT_TEXT_CODING,
@@ -40,20 +24,12 @@ import {
   normalizeRenderOptions,
 } from "./renderControls";
 import type {
-  ApiError,
   AssignmentMode,
-  AuthResponse,
-  AuthProviderMode,
-  BackgroundListResponse,
   BackgroundRecord,
-  CharacterOverrideKey,
-  DatasetListResponse,
   DatasetRecord,
-  DefaultsResponse,
   NumericOptionKey,
   RenderJobResponse,
   RenderOptions,
-  StoredAuthSession,
   UploadCounts,
   UploadType,
   UserProfile,
@@ -69,9 +45,6 @@ const EMPTY_COUNTS: UploadCounts = {
 const EMPTY_BACKGROUNDS: BackgroundRecord[] = [];
 const DEFAULT_BACKGROUND_LIMIT = 1;
 
-function extractApiErrorMessage(payload: ApiError | null, fallback: string) {
-  return payload?.detail || payload?.details || payload?.error || fallback;
-}
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -85,7 +58,6 @@ function downloadBlob(blob: Blob, filename: string) {
 
 
 export default function App() {
-  const isHostedAuth = authProvider === "supabase";
 
   const [authToken, setAuthToken] = useState<string | null>("anonymous-token");
   const [currentUser, setCurrentUser] = useState<UserProfile | null>({
@@ -94,7 +66,6 @@ export default function App() {
     auth_mode: "none",
     created_at: new Date().toISOString(),
   });
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(
     null
   );
@@ -105,9 +76,6 @@ export default function App() {
       .substring(2, 11)}_${Date.now().toString(36)}`;
   };
 
-  const [isAuthChecking, setIsAuthChecking] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
 
   const [availableCounts, setAvailableCounts] = useState<UploadCounts>(EMPTY_COUNTS);
   const [datasets, setDatasets] = useState<DatasetRecord[]>([]);
@@ -175,32 +143,6 @@ export default function App() {
   );
 
 
-  const persistSession = useCallback(
-    (
-      accessToken: string,
-      user: UserProfile,
-      provider: AuthProviderMode,
-      refreshTokenValue: string | null = null
-    ) => {
-      const session: StoredAuthSession = {
-        accessToken,
-        refreshToken: refreshTokenValue,
-        provider,
-        user,
-      };
-      persistAuthSession(session);
-      setAuthToken(accessToken);
-      setCurrentUser(user);
-      setRefreshToken(refreshTokenValue);
-    },
-    []
-  );
-
-  const persistWorkspaceSession = useCallback((nextWorkspaceSessionId: string) => {
-    persistWorkspaceSessionId(nextWorkspaceSessionId);
-    setWorkspaceSessionId(nextWorkspaceSessionId);
-  }, []);
-
   const clearPreview = useCallback(() => {
     setPreviewUrl((current) => {
       if (current) {
@@ -209,47 +151,6 @@ export default function App() {
       return null;
     });
   }, []);
-
-  const clearAuthState = useCallback(() => {
-    clearStoredAuthSession();
-    clearStoredWorkspaceSessionId();
-    setAuthToken(null);
-    setCurrentUser(null);
-    setRefreshToken(null);
-    setWorkspaceSessionId(null);
-    setAvailableCounts(EMPTY_COUNTS);
-    setDatasets([]);
-    setBackgrounds(EMPTY_BACKGROUNDS);
-    setBackgroundLimit(DEFAULT_BACKGROUND_LIMIT);
-    setBackgroundCustomCount(0);
-    setRenderHistory([]);
-    setSelectedRenderId(null);
-    clearPreview();
-  }, [clearPreview]);
-
-  const handleExpiredSession = useCallback(
-    (message = "Your session expired. Please sign in again.") => {
-      clearAuthState();
-      setAuthError(message);
-    },
-    [clearAuthState]
-  );
-
-  const fetchCurrentUser = useCallback(
-    async (token: string, workspaceOverride?: string) => {
-      try {
-        const data = await apiClient.get<UserProfile>("/api/v1/me", {
-          authToken: token,
-          workspaceSessionId: workspaceOverride,
-        });
-        return { response: { ok: true } as Response, data };
-      } catch (error) {
-        return {
-          response: { ok: false, status: (error as any).status } as Response,
-          data: null,
-        };
-      }
-    },
     []
   );
 
@@ -498,11 +399,6 @@ export default function App() {
     loadRendererDefaults();
   }, [loadRendererDefaults]);
 
-  useEffect(() => {
-    if (hasStoredProviderMismatch) {
-      clearStoredAuthSession();
-    }
-  }, [hasStoredProviderMismatch]);
 
   useEffect(() => {
 
@@ -637,52 +533,6 @@ export default function App() {
     };
   }, [authToken, hasPendingJobs, loadDatasets, loadRenders, workspaceSessionId]);
 
-  const handleAuthenticate = async (
-    mode: "login" | "signup",
-    email: string,
-    password: string
-  ) => {
-    setIsAuthenticating(true);
-    setAuthError(null);
-
-    try {
-      const nextWorkspaceSessionId = createWorkspaceSessionId();
-      persistWorkspaceSession(nextWorkspaceSessionId);
-
-      if (isHostedAuth) {
-        const session =
-          mode === "login"
-            ? await signInWithSupabasePassword(email, password)
-            : await signUpWithSupabasePassword(email, password);
-
-        await bootstrapAuthenticatedWorkspace(
-          session.accessToken,
-          "supabase",
-          session.refreshToken,
-          nextWorkspaceSessionId
-        );
-      } else {
-        const data = await apiClient.post<AuthResponse>(`/api/v1/auth/${mode}`, {
-          email,
-          password,
-        });
-
-        persistSession(data.access_token, data.user, "local", null);
-        setAuthError(null);
-        await Promise.all([
-          loadDatasets(data.access_token, nextWorkspaceSessionId),
-          loadBackgrounds(data.access_token, nextWorkspaceSessionId),
-          loadRenders(data.access_token, nextWorkspaceSessionId),
-        ]);
-      }
-    } catch (error) {
-      clearStoredWorkspaceSessionId();
-      setWorkspaceSessionId(null);
-      setAuthError(getErrorMessage(error, "Authentication failed."));
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
 
   const handleUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -1108,40 +958,9 @@ export default function App() {
     clearStoredAssignmentMode();
   };
 
-  const handleLogout = useCallback(async () => {
-    // 1. Optimistically clear local state immediately
-    const token = authToken;
-    clearAuthState();
-    setAuthError(null);
-    setIsDemoOpen(false);
-    setAssignmentMode(null);
-    clearStoredAssignmentMode();
-    setUploadError(null);
-    setRenderError(null);
-    setPreviewError(null);
-
-    // 2. Trigger backend cleanup in background with timeout
-    if (token && workspaceSessionId) {
-      void apiClient
-        .post(
-          "/api/v1/auth/logout",
-          {},
-          { authToken: token, workspaceSessionId }
-        )
-        .catch(() => {
-          // Silent catch for background cleanup
-        });
-    }
-
-    if (token && isHostedAuth) {
-      void logoutSupabaseSession(token).catch(() => {
-        // Silent catch for background cleanup
-      });
-    }
-  }, [authToken, clearAuthState, isHostedAuth, workspaceSessionId]);
 
   const isCodingMode = assignmentMode === "coding";
-  const userForAuth = useMemo(() => currentUser ?? readStoredAuthUser(), [currentUser]);
+  const userForAuth = useMemo(() => currentUser, [currentUser]);
   const previewStatusLabel = selectedRender
     ? selectedRender.status === "completed"
       ? `Ready since ${new Intl.DateTimeFormat(undefined, {
@@ -1155,92 +974,8 @@ export default function App() {
       : "The backend is still processing this render."
     : "Render a page to start your history.";
 
-  if (isAuthChecking && !currentUser) {
-    return (
-      <div className="app app--gate">
-        <div className="gate-topbar">
-          <span className="gate-brand">Handwritten Notes Generator</span>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
-        </div>
-        <section
-          className="workspace-loader-shell"
-          aria-labelledby="workspace-loader-title"
-        >
-          <div className="workspace-loader surface surface--raised">
-            <div className="workspace-loader__hero">
-              <p className="app-header__eyebrow">Opening Workspace</p>
-              <h1 className="workspace-loader__title" id="workspace-loader-title">
-                Preparing your handwriting engine
-              </h1>
-              <p className="workspace-loader__lede">
-                We&apos;re checking your session, restoring this workspace, and
-                getting the renderer ready for uploads and preview.
-              </p>
-            </div>
 
-            <div
-              className="workspace-loader__status"
-              role="status"
-              aria-live="polite"
-            >
-              <div className="workspace-loader__pulse" aria-hidden>
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className="workspace-loader__status-copy">
-                <p className="workspace-loader__status-label">
-                  Checking your workspace
-                </p>
-                <p className="workspace-loader__status-text">
-                  This usually takes just a moment.
-                </p>
-              </div>
-            </div>
 
-            <div className="workspace-loader__grid" aria-hidden>
-              <article className="workspace-loader__card">
-                <span className="workspace-loader__card-step">01</span>
-                <h2 className="workspace-loader__card-title">Verify session</h2>
-                <p className="workspace-loader__card-text">
-                  Confirming your sign-in and workspace access.
-                </p>
-              </article>
-              <article className="workspace-loader__card">
-                <span className="workspace-loader__card-step">02</span>
-                <h2 className="workspace-loader__card-title">Load assets</h2>
-                <p className="workspace-loader__card-text">
-                  Restoring datasets, backgrounds, and recent renders.
-                </p>
-              </article>
-              <article className="workspace-loader__card">
-                <span className="workspace-loader__card-step">03</span>
-                <h2 className="workspace-loader__card-title">Warm renderer</h2>
-                <p className="workspace-loader__card-text">
-                  Pulling in defaults so Compose opens ready to use.
-                </p>
-              </article>
-            </div>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  if (!authToken || !currentUser) {
-    return (
-      <AuthScreen
-        theme={theme}
-        isSubmitting={isAuthenticating}
-        error={authError}
-        lastUser={userForAuth}
-        providerLabel={authProviderLabel}
-        providerMode={authProvider}
-        onToggleTheme={toggleTheme}
-        onSubmit={handleAuthenticate}
-      />
-    );
-  }
 
   if (assignmentMode === null) {
     if (isDemoOpen) {
