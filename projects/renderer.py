@@ -30,10 +30,10 @@ DEFAULT_CFG = {
     "glyph_size": 44,
     "render_scale_multiplier": 1.67,
 
-    "line_height": 57,
+    "line_height": 67,
 
-    "char_spacing": -1,
-    "word_spacing": 26,
+    "char_spacing": -2,
+    "word_spacing": 40,
     "word_spacing_jitter": 3,
     "line_drift_per_word": 0.18,
     "line_start_jitter": 2.0,

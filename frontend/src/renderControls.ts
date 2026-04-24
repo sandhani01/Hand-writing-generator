@@ -6,28 +6,28 @@ import type {
   ControlGroup,
 } from "./types";
 
-export const DEFAULT_TEXT_SIMPLE = `Every brave cat danced eagerly for gentle heroes.
-
-Middle letters stay compact, tall letters rise up, and descenders drop lower.
-0123456789`;
+export const DEFAULT_TEXT_SIMPLE = `Python is a high-level, interpreted programming language known for its simple syntax and readability, which makes it especially popular among beginners and professionals alike. It supports multiple programming paradigms, including object-oriented, procedural, and functional programming. Python is widely used in areas such as web development, data science, artificial intelligence, automation, and software development. Its large standard library and vast ecosystem of third-party packages allow developers to build applications efficiently and quickly.`;
 
 /** @deprecated Use DEFAULT_TEXT_SIMPLE */
 export const DEFAULT_TEXT = DEFAULT_TEXT_SIMPLE;
 
-export const DEFAULT_TEXT_CODING = `function estimatePi(iterations: number) {
-  let sum = 0;
-  for (let k = 0; k < iterations; k++) {
-    sum += (-1) ** k / (2 * k + 1);
-  }
-  return 4 * sum;
-}
+export const DEFAULT_TEXT_CODING = `public class Main {
+    public static void main(String[] args) {
+        Car car1 = new Car("Toyota", 120);
+        Car car2 = new Car("BMW", 150);
 
-// Notes: brackets, operators, and symbols use the coding grid.`;
+        car1.displayInfo();
+        car1.accelerate(20);
+
+        car2.displayInfo();
+        car2.accelerate(30);
+    }
+}`;
 
 export const FALLBACK_OPTIONS: RenderOptions = {
-  lineHeight: 57,
-  charSpacing: -1,
-  wordSpacing: 26,
+  lineHeight: 67,
+  charSpacing: -2,
+  wordSpacing: 40,
   jitter: 0,
   inkColor: "#14296b",
   overallScale: 1.67,

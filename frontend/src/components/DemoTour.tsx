@@ -97,18 +97,32 @@ const DEMO_SLIDES: DemoSlide[] = [
     imagePath: "/demo/04-Upload Datasets.png",
     imageAlt: "Upload Datasets section demo screenshot",
     description:
-      "Upload your cropped datasets and enter the text you want to generate.",
+      "Upload your cropped datasets to create your personalized handwriting library.",
     tips: [
       "Upload alphabet datasets (and coding datasets if needed).",
       "Verify all files are correctly uploaded before proceeding.",
-      "Enter or paste the exact text you want to convert.",
+      "Check that your datasets are marked as 'Ready' in the library.",
     ],
   },
   {
     step: "05",
+    title: "Compose and Render",
+    tone: "Compose and Render",
+    imagePath: "/demo/05-Compose and Render.png",
+    imageAlt: "Compose and Render section demo screenshot",
+    description:
+      "Enter the text you want to generate and click render to start the process.",
+    tips: [
+      "Type or paste your content into the compose text area.",
+      "Click 'Render page' to initiate the handwriting generation.",
+      "Wait for the engine to map your characters to the uploaded datasets.",
+    ],
+  },
+  {
+    step: "06",
     title: "Preview and Download",
     tone: "export",
-    imagePath: "/demo/05-Preview and Download.png",
+    imagePath: "/demo/06-Preview and Download.png",
     imageAlt: "Preview and Download section demo screenshot",
     description:
       "Preview the generated output and download it as an image.",
