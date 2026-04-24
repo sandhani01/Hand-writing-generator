@@ -181,7 +181,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
               </a>
 
               <a 
-                href="/coding_grid.pdf" 
+                href="/symbols_grid.pdf" 
                 download="Handwriting_Template_Symbols.pdf"
                 className="mode-template-card"
               >

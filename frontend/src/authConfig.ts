@@ -30,8 +30,7 @@ const env = readEnv();
 const explicitProvider = normalizeProvider(env.VITE_AUTH_PROVIDER);
 const hasSupabaseConfig = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY);
 
-export const authProvider: AuthProviderMode =
-  explicitProvider ?? (hasSupabaseConfig ? "supabase" : "local");
+export const authProvider: AuthProviderMode = "local";
 
 export const authProviderLabel =
   authProvider === "supabase" ? "Supabase secured" : "Local account";

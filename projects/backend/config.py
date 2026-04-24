@@ -88,7 +88,7 @@ class Settings:
             "HANDWRITING_API_TITLE",
             "Handwritten Notes Backend",
         )
-        self.auth_mode = os.environ.get("HANDWRITING_AUTH_MODE", "local").lower()
+        self.auth_mode = os.environ.get("HANDWRITING_AUTH_MODE", "none").lower()
         self.supabase_url = os.environ.get("HANDWRITING_SUPABASE_URL", "").strip().rstrip("/")
         self.auth_jwt_issuer = os.environ.get(
             "HANDWRITING_AUTH_JWT_ISSUER", ""

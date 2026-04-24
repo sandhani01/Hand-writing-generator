@@ -110,15 +110,12 @@ export default function App() {
   const initialSession =
     hasStoredProviderMismatch ? null : initialStoredSession;
 
-  const [authToken, setAuthToken] = useState<string | null>(() =>
-    initialSession?.accessToken ?? null
-  );
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() =>
-    initialSession?.user ?? readStoredAuthUser()
-  );
-  const [refreshToken, setRefreshToken] = useState<string | null>(() =>
-    initialSession?.refreshToken ?? null
-  );
+  const [authToken, setAuthToken] = useState<string | null>("anonymous-token");
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>({
+    email: "anonymous@local.dev",
+    id: "anonymous-user",
+  });
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(
     null
   );
@@ -129,7 +126,7 @@ export default function App() {
       .substring(2, 11)}_${Date.now().toString(36)}`;
   };
 
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isAuthChecking, setIsAuthChecking] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showEmergencyLogout, setShowEmergencyLogout] = useState(false);
@@ -533,88 +530,33 @@ export default function App() {
     let cancelled = false;
     let releaseLoaderId: number | null = null;
 
-    const verifySession = async () => {
-      if (!authToken) {
-        workspaceBootKeyRef.current = null;
-        if (!cancelled) {
-          setIsAuthChecking(false);
-          setAvailableCounts(EMPTY_COUNTS);
-        }
-        return;
-      }
-
-      setIsAuthChecking(true);
+    const bootWorkspace = async () => {
       const activeWorkspaceSessionId =
         workspaceSessionId ?? createWorkspaceSessionId();
+      
       if (!workspaceSessionId) {
-        persistWorkspaceSession(activeWorkspaceSessionId);
         setWorkspaceSessionId(activeWorkspaceSessionId);
       }
-      const workspaceBootKey = [
-        authToken,
-        refreshToken ?? "",
-        activeWorkspaceSessionId,
-      ].join(":");
 
-      if (workspaceBootKeyRef.current === workspaceBootKey) {
-        if (!cancelled) {
-          setIsAuthChecking(false);
-        }
+      if (workspaceBootKeyRef.current === activeWorkspaceSessionId) {
         return;
       }
+      workspaceBootKeyRef.current = activeWorkspaceSessionId;
 
-      workspaceBootKeyRef.current = workspaceBootKey;
-
-      if (currentUser) {
-        releaseLoaderId = window.setTimeout(() => {
-          if (!cancelled) {
-            setIsAuthChecking(false);
-          }
-        }, WORKSPACE_BOOT_SOFT_RELEASE_MS);
-      }
-
-      const emergencyTimerId = window.setTimeout(() => {
-        if (!cancelled) {
-          setShowEmergencyLogout(true);
-        }
-      }, 10000);
-
+      setIsAuthChecking(true);
       try {
-        await bootstrapAuthenticatedWorkspace(
-          authToken,
-          authProvider,
-          refreshToken,
-          activeWorkspaceSessionId
-        );
-      } catch (error) {
-        if (!cancelled) {
-          if (currentUser && isRecoverableWorkspaceBootError(error)) {
-            void Promise.allSettled([
-              loadDatasets(authToken, activeWorkspaceSessionId),
-              loadBackgrounds(authToken, activeWorkspaceSessionId),
-              loadRenders(authToken, activeWorkspaceSessionId),
-            ]);
-            return;
-          }
-
-          workspaceBootKeyRef.current = null;
-          handleExpiredSession(
-            getErrorMessage(error, "Could not verify your saved session.")
-          );
-        }
+        await Promise.allSettled([
+          loadRendererDefaults(),
+          loadDatasets(authToken!, activeWorkspaceSessionId),
+          loadBackgrounds(authToken!, activeWorkspaceSessionId),
+          loadRenders(authToken!, activeWorkspaceSessionId),
+        ]);
       } finally {
-        window.clearTimeout(emergencyTimerId);
-        if (releaseLoaderId !== null) {
-          window.clearTimeout(releaseLoaderId);
-        }
-        if (!cancelled) {
-          setIsAuthChecking(false);
-          setShowEmergencyLogout(false);
-        }
+        setIsAuthChecking(false);
       }
     };
 
-    void verifySession();
+    void bootWorkspace();
     return () => {
       cancelled = true;
     };
@@ -1279,17 +1221,6 @@ export default function App() {
                   This usually takes just a moment.
                 </p>
               </div>
-              {showEmergencyLogout && (
-                <div className="workspace-loader__emergency">
-                  <button 
-                    type="button" 
-                    className="btn btn--outline btn--compact"
-                    onClick={handleLogout}
-                  >
-                    Stuck? Sign out anyway
-                  </button>
-                </div>
-              )}
             </div>
 
             <div className="workspace-loader__grid" aria-hidden>
@@ -1353,7 +1284,6 @@ export default function App() {
         onToggleTheme={toggleTheme}
         onSelectMode={selectAssignmentMode}
         onOpenDemo={() => setIsDemoOpen(true)}
-        onLogout={handleLogout}
       />
     );
   }

@@ -15,8 +15,7 @@ export function AssignmentGate({
   onToggleTheme,
   onSelectMode,
   onOpenDemo,
-  onLogout,
-}: Props) {
+}: Omit<Props, "onLogout">) {
   return (
     <div className="app app--gate">
       <a className="skip-link" href="#assignment-picker">
@@ -25,9 +24,6 @@ export function AssignmentGate({
       <div className="gate-topbar">
         <span className="gate-brand">Handwritten Notes</span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onLogout}>
-            Sign out
-          </button>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
       </div>

@@ -192,36 +192,10 @@ def get_current_user(
     x_dev_user_id: Annotated[str | None, Header(alias="X-Dev-User-Id")] = None,
     x_dev_user_email: Annotated[str | None, Header(alias="X-Dev-User-Email")] = None,
 ) -> User:
-    settings = get_settings()
-
-    if settings.auth_mode == "dev":
-        user_id = (x_dev_user_id or settings.dev_user_id).strip()
-        email = _normalize_email(
-            x_dev_user_email or settings.dev_user_email,
-            fallback_subject=user_id,
-            auth_mode="dev",
-        )
-        return User(
-            id=user_id,
-            email=email,
-            auth_mode="dev",
-            created_at=datetime.now(timezone.utc).isoformat(),
-        )
-
-    if settings.auth_mode == "local":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "HANDWRITING_AUTH_MODE=local is no longer supported in this build. "
-                "Use HANDWRITING_AUTH_MODE=supabase or HANDWRITING_AUTH_MODE=dev."
-            ),
-        )
-
-    if settings.uses_external_auth:
-        token = _extract_bearer_token(authorization)
-        return _user_from_external_token(token)
-
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Configured auth mode is not implemented.",
+    # Authentication is disabled. Always return a default anonymous user.
+    return User(
+        id="anonymous-user",
+        email="anonymous@local.dev",
+        auth_mode="none",
+        created_at=datetime.now(timezone.utc).isoformat(),
     )
