@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, status
 
 from ...auth import get_current_user
 from ...models import User
@@ -15,6 +15,7 @@ from ...services.datasets import (
     dataset_limits,
     delete_dataset,
     list_user_datasets,
+    process_dataset_extraction,
     rename_dataset,
 )
 from ...workspace import get_workspace_session_id
@@ -42,6 +43,7 @@ def list_datasets(
 
 @router.post("/upload", response_model=DatasetResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_dataset(
+    background_tasks: BackgroundTasks,
     grid: UploadFile = File(...),
     dataset_type: str = Form(..., alias="type"),
     display_name: str | None = Form(default=None),
@@ -57,6 +59,14 @@ async def upload_dataset(
         content=content,
         display_name=display_name,
     )
+    
+    background_tasks.add_task(
+        process_dataset_extraction,
+        user_id=current_user.id,
+        workspace_session_id=workspace_session_id,
+        dataset_id=dataset.id,
+    )
+    
     return DatasetResponse.model_validate(dataset)
 
 

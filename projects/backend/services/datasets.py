@@ -138,30 +138,41 @@ def create_dataset_from_upload(
     )
     _replace_dataset(manifest, dataset)
     save_workspace_manifest(user.id, workspace_session_id, manifest)
+    return dataset
+
+
+def process_dataset_extraction(
+    user_id: str,
+    workspace_session_id: str,
+    dataset_id: str,
+) -> None:
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
+    dataset = get_dataset(user_id, workspace_session_id, dataset_id)
+    if not dataset:
+        return
 
     try:
-        glyph_root_path = Path(glyph_root)
+        glyph_root_path = Path(dataset.glyph_root)
         if glyph_root_path.exists():
             shutil.rmtree(glyph_root_path, ignore_errors=True)
         glyph_root_path.mkdir(parents=True, exist_ok=True)
 
         extract_dataset(
-            image_path=Path(source_path),
+            image_path=Path(dataset.source_image_path),
             dataset_type=dataset.dataset_type,
             output_folder=glyph_root_path,
         )
         dataset.status = "completed"
         dataset.error_message = None
-    except Exception as exc:  # pragma: no cover - runtime extraction failures
-        remove_path(glyph_root)
+    except Exception as exc:  # pragma: no cover
+        remove_path(dataset.glyph_root)
         dataset.status = "failed"
         dataset.error_message = str(exc)
 
     dataset.updated_at = now_iso()
-    manifest = load_workspace_manifest(user.id, workspace_session_id)
+    manifest = load_workspace_manifest(user_id, workspace_session_id)
     _replace_dataset(manifest, dataset)
-    save_workspace_manifest(user.id, workspace_session_id, manifest)
-    return dataset
+    save_workspace_manifest(user_id, workspace_session_id, manifest)
 
 
 def rename_dataset(
