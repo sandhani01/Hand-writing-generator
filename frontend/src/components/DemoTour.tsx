@@ -45,7 +45,7 @@ const DEMO_THEME_STYLES = [
   },
 ] as const;
 
- 
+
 
 const DEMO_SLIDES: DemoSlide[] = [
   {
@@ -64,7 +64,7 @@ const DEMO_SLIDES: DemoSlide[] = [
   },
   {
     step: "02",
-    title: "Write Letters in the Grid",
+    title: "Write Letters in the Grid(In order[Provided in example at start-page])",
     tone: "Write Letters in the Grid",
     imagePath: "/demo/02-Write Letters in the Grid.png",
     imageAlt: "Write Letters in the Grid section demo screenshot",
@@ -177,12 +177,12 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
       </div>
 
       <main id="demo-tour" className="demo-tour" aria-labelledby="demo-tour-title">
-       
+
 
         <section className="demo-stage" style={activeThemeStyle}>
-          <div 
-            className="demo-progress-bar" 
-            style={{ width: `${((activeIndex + 1) / DEMO_SLIDES.length) * 100}%` }} 
+          <div
+            className="demo-progress-bar"
+            style={{ width: `${((activeIndex + 1) / DEMO_SLIDES.length) * 100}%` }}
             aria-hidden="true"
           />
           <div className="demo-stage__top">

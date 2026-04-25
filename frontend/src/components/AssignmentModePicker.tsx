@@ -158,55 +158,32 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
             </button>
           </div>
 
-          <div className="mode-templates" aria-label="Downloadable templates">
-            <h3 className="mode-templates__title">Print This Grid Templates Now !!</h3>
-            <div className="mode-templates__grid">
-              <a 
-                href="/alphabet_grid.pdf" 
-                download="Handwriting_Template_Alphabets.pdf"
-                className="mode-template-card"
-              >
-                <div className="mode-template-card__icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="12" y1="18" x2="12" y2="12"/>
-                    <polyline points="9 15 12 12 15 15"/>
-                  </svg>
-                </div>
-                <div className="mode-template-card__content">
-                  <div className="mode-template-card__name">Alphabet Grid</div>
-                  <div className="mode-template-card__size">PDF Template (8×8)</div>
-                </div>
-              </a>
 
-              <a 
-                href="/symbols_grid.pdf" 
-                download="Handwriting_Template_Symbols.pdf"
-                className="mode-template-card"
-              >
-                <div className="mode-template-card__icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="12" y1="18" x2="12" y2="12"/>
-                    <polyline points="9 15 12 12 15 15"/>
-                  </svg>
-                </div>
-                <div className="mode-template-card__content">
-                  <div className="mode-template-card__name">Symbols Grid</div>
-                  <div className="mode-template-card__size">PDF Template (6×5)</div>
-                </div>
-              </a>
-            </div>
-          </div>
 
           <div className="mode-examples" aria-label="Example grids preview">
             <div className="mode-example" aria-label="Example alphabet grid preview">
-              <div className="mode-example__head">
-                <div className="mode-example__title">
-                  MAKE THIS BEFORE YOU START(ALPHABETS)
-                </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <a 
+                  href="/alphabet_grid.pdf" 
+                  download="Handwriting_Template_Alphabets.pdf"
+                  className="mode-template-card"
+                >
+                  <div className="mode-template-card__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="12" y1="18" x2="12" y2="12"/>
+                      <polyline points="9 15 12 12 15 15"/>
+                    </svg>
+                  </div>
+                  <div className="mode-template-card__content" style={{ textAlign: "left" }}>
+                    <div className="mode-template-card__name">Alphabet Grid</div>
+                    <div className="mode-template-card__size">PDF Template (8×8)</div>
+                  </div>
+                </a>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
                 <button
                   type="button"
                   className="mode-example__toggle"
@@ -215,8 +192,6 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                   {showRealAlphabet ? "Show Digital" : "Show Real"}
                 </button>
               </div>
-
-              <div className="mode-example__subtitle">alphabets grid 8x8</div>
 
               <div
                 className="mode-flip mode-flip--alphabet"
@@ -264,13 +239,39 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                   </div>
                 </div>
               </div>
+
+              <div className="mode-example__head" style={{ marginTop: '0.75rem', justifyContent: 'center', textAlign: 'center' }}>
+                <div className="mode-example__title">
+                  MAKE THIS BEFORE YOU START(ALPHABETS)
+                </div>
+              </div>
+
+              <div className="mode-example__subtitle">alphabets grid 8x8</div>
             </div>
 
             <div className="mode-example" aria-label="Example coding symbols preview">
-              <div className="mode-example__head">
-                <div className="mode-example__title">
-                  MAKE THIS BEFORE YOU START(SYMBOLS)
-                </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <a 
+                  href="/symbols_grid.pdf" 
+                  download="Handwriting_Template_Symbols.pdf"
+                  className="mode-template-card"
+                >
+                  <div className="mode-template-card__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="12" y1="18" x2="12" y2="12"/>
+                      <polyline points="9 15 12 12 15 15"/>
+                    </svg>
+                  </div>
+                  <div className="mode-template-card__content" style={{ textAlign: "left" }}>
+                    <div className="mode-template-card__name">Symbols Grid</div>
+                    <div className="mode-template-card__size">PDF Template (6×5)</div>
+                  </div>
+                </a>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
                 <button
                   type="button"
                   className="mode-example__toggle"
@@ -279,8 +280,6 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                   {showRealCoding ? "Show Digital" : "Show Real"}
                 </button>
               </div>
-
-              <div className="mode-example__subtitle">coding grid 6x5</div>
 
               <div
                 className="mode-flip mode-flip--coding"
@@ -330,6 +329,14 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                   </div>
                 </div>
               </div>
+
+              <div className="mode-example__head" style={{ marginTop: '0.75rem', justifyContent: 'center', textAlign: 'center' }}>
+                <div className="mode-example__title">
+                  MAKE THIS BEFORE YOU START(SYMBOLS)
+                </div>
+              </div>
+
+              <div className="mode-example__subtitle">coding grid 6x5</div>
             </div>
           </div>
         </section>
