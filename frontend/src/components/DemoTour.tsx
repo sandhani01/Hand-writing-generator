@@ -4,7 +4,7 @@ import { ThemeToggle } from "./ThemeToggle";
 type Props = {
   theme: "dark" | "light";
   onToggleTheme: () => void;
-  onBack: (navigateToTemplates?: boolean) => void;
+  onBack: (options?: { navigateToTemplates?: boolean; selectMode?: "simple" | "coding"; highlightUpload?: boolean }) => void;
 };
 
 type DemoStep = {
@@ -91,7 +91,7 @@ const DEMO_STEPS: DemoStep[] = [
     imageAlt: "Dataset upload interface showing progress",
     description:
       "Upload your cropped images through the Datasets panel. The backend extracts every glyph automatically. Wait for the status badge to show 'Ready' before continuing.",
-    actionLabel: "Open Panel",
+    actionLabel: "Click to Upload",
     accent: {
       "--step-accent": "#f59e0b",
       "--step-accent-dim": "rgba(245, 158, 11, 0.12)",
@@ -249,10 +249,9 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
                         className="dtour-card__action-btn"
                         onClick={() => {
                           if (step.step === "01" || step.step === "02") {
-                            onBack(true); // Navigate to templates page
+                            onBack({ navigateToTemplates: true });
                           } else if (step.step === "04") {
-                            // If they click 'Open Panel', exit tour to main app
-                            onBack();
+                            onBack({ selectMode: "simple", highlightUpload: true });
                           }
                         }}
                       >

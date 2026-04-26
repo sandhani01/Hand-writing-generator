@@ -415,7 +415,7 @@ export function DatasetSection({
         ) : null}
 
         <div className="dataset-groups">
-          <section className="dataset-group">
+          <section id="handwriting-upload-zone" className="dataset-group">
             <div className="dataset-group__header">
               <div>
                 <h3 className="dataset-group__title">Upload handwriting fonts</h3>

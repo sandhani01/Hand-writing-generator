@@ -872,9 +872,24 @@ export default function App() {
         <DemoTour
           theme={theme}
           onToggleTheme={toggleTheme}
-          onBack={(andGoToTemplates) => {
+          onBack={(options) => {
             setIsDemoOpen(false);
-            setInitialTemplatesView(Boolean(andGoToTemplates));
+            if (options?.selectMode) {
+              selectAssignmentMode(options.selectMode);
+              setFontSource("personal");
+              if (options.highlightUpload) {
+                setHighlightUpload(true);
+                setTimeout(() => setHighlightUpload(false), 5000);
+                setTimeout(() => {
+                  document.getElementById("handwriting-upload-zone")?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                  });
+                }, 150);
+              }
+            } else {
+              setInitialTemplatesView(Boolean(options?.navigateToTemplates));
+            }
           }}
         />
       );
