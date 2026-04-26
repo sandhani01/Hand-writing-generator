@@ -1,4 +1,4 @@
-# Handwritten Notes Generator
+# Handwritten-Notes
 
 Generate realistic handwritten pages from your own handwriting datasets.
 

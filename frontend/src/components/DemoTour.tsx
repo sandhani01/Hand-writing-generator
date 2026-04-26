@@ -167,7 +167,7 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
       </a>
 
       <div className="gate-topbar">
-        <span className="gate-brand">Handwritten Notes Generator</span>
+        <span className="gate-brand">Handwritten-Notes</span>
         <div className="demo-topbar__actions">
           <button type="button" className="btn btn--ghost" onClick={onBack}>
             Back

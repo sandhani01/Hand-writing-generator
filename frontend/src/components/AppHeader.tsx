@@ -32,7 +32,7 @@ export function AppHeader({
       <div className="app-header__brand">
         <div className="app-header__logo-group" onClick={onRefreshLibrary} title="Refresh Workspace">
           <div className="app-header__logo-mark" aria-hidden="true" />
-          <span className="app-header__brand-name">Handwritten Notes Generator</span>
+          <span className="app-header__brand-name">Handwritten-Notes</span>
         </div>
         <div className="app-header__separator" aria-hidden="true" />
         <span className={`mode-badge ${isCodingMode ? "mode-badge--coding" : ""}`}>

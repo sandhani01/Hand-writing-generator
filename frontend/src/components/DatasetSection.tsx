@@ -321,11 +321,21 @@ export function DatasetSection({
               {defaultFonts.map((fontName) => {
                 const isSelected = fontName === selectedDefaultFont;
                 return (
-                  <article className="dataset-card" key={fontName}>
+                  <article 
+                    className={`dataset-card ${isSelected ? 'dataset-card--selected' : ''}`} 
+                    key={fontName}
+                    onClick={() => onSelectDefaultFont?.(fontName)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="dataset-card__header">
-                      <span className={`status-badge status-badge--completed`}>
+                      <span className="status-badge status-badge--completed">
                         Ready
                       </span>
+                      {isSelected && (
+                        <span className="dataset-pill" style={{ color: 'var(--success-text)', border: '1px solid var(--success-border)' }}>
+                          Selected
+                        </span>
+                      )}
                     </div>
 
                     <h4 className="dataset-card__title">{fontName}</h4>
@@ -334,17 +344,6 @@ export function DatasetSection({
                       <span className="dataset-card__meta">
                         {isSelected ? "Currently selected" : "Available"}
                       </span>
-                    </div>
-
-                    <div className="dataset-card__actions">
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--mini"
-                        disabled={isSelected}
-                        onClick={() => onSelectDefaultFont?.(fontName)}
-                      >
-                        {isSelected ? "In use" : "Select Font"}
-                      </button>
                     </div>
                   </article>
                 );
