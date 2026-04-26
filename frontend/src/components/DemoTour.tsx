@@ -22,7 +22,7 @@ type DemoStep = {
 const DEMO_STEPS: DemoStep[] = [
   {
     step: "01",
-    title: "Print Your Grid",
+    title: "Print Your Grid [Color Print]",
     subtitle: "Download & print",
     imagePath: "/demo/01-Print Grid.png",
     imageAlt: "Grid template printed on paper",
@@ -44,12 +44,13 @@ const DEMO_STEPS: DemoStep[] = [
   },
   {
     step: "02",
-    title: "Write Letters",
+    title: "Write Letters [In Order Provided]",
     subtitle: "Fill the grid by hand",
     imagePath: "/demo/02-Write Letters in the Grid.png",
     imageAlt: "Handwritten characters filled into grid boxes",
     description:
       "Write one character per box using a dark pen. Keep your letters centered — the extractor reads each cell independently. Follow the exact order shown on the start page.",
+    actionLabel: "Watch Order",
     accent: {
       "--step-accent": "#4ade80",
       "--step-accent-dim": "rgba(74, 222, 128, 0.12)",
@@ -247,8 +248,8 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
                         type="button"
                         className="dtour-card__action-btn"
                         onClick={() => {
-                          if (step.step === "01") {
-                            onBack(true); // Navigate to templates page without force-downloading
+                          if (step.step === "01" || step.step === "02") {
+                            onBack(true); // Navigate to templates page
                           } else if (step.step === "04") {
                             // If they click 'Open Panel', exit tour to main app
                             onBack();

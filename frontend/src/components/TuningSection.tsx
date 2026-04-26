@@ -76,12 +76,13 @@ export function TuningSection({
     setExpandedSubSections(next);
   };
 
+  const [isStyleExpanded, setIsStyleExpanded] = useState(false);
+
   return (
     <article className="surface surface--raised">
       <WorkflowSection
         step="02"
         title="Adjust Style"
-        
         headerExtra={
           <div className="workflow-actions">
             <button
@@ -108,9 +109,36 @@ export function TuningSection({
             >
               Reset
             </button>
+            <div className="workflow-actions__divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => setIsStyleExpanded(!isStyleExpanded)}
+              aria-expanded={isStyleExpanded}
+              title={isStyleExpanded ? "Collapse Section" : "Expand Section"}
+              style={{ padding: '0 0.5rem' }}
+            >
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                style={{ 
+                  transform: isStyleExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s ease'
+                }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
           </div>
         }
       >
+        <div style={{ display: isStyleExpanded ? 'block' : 'none' }}>
         <div className="controls controls--basic">
           {BASIC_CONTROLS.map((control) => (
             <SliderControl
@@ -299,6 +327,7 @@ export function TuningSection({
           ))}
         </div>
 
+        </div>
       </WorkflowSection>
     </article>
   );

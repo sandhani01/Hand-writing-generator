@@ -874,9 +874,7 @@ export default function App() {
           onToggleTheme={toggleTheme}
           onBack={(andGoToTemplates) => {
             setIsDemoOpen(false);
-            if (andGoToTemplates) {
-              setInitialTemplatesView(true);
-            }
+            setInitialTemplatesView(Boolean(andGoToTemplates));
           }}
         />
       );
