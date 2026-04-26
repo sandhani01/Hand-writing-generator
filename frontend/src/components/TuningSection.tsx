@@ -80,7 +80,7 @@ export function TuningSection({
     <article className="surface surface--raised">
       <WorkflowSection
         step="02"
-        title="Tuning"
+        title="Adjust Style"
         
         headerExtra={
           <div className="workflow-actions">

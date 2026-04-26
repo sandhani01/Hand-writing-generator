@@ -78,29 +78,31 @@ def create_render_job(
     workspace_session_id: str,
     text_content: str,
     options: dict,
+    font_source: str = "personal",
 ) -> RenderJobRecord:
-    datasets = list_user_datasets(user.id, workspace_session_id)
-    completed_alphabet_datasets = [
-        dataset
-        for dataset in datasets
-        if dataset.dataset_type == "alphabet" and dataset.status == "completed"
-    ]
-    failed_or_pending = [
-        dataset
-        for dataset in datasets
-        if dataset.dataset_type == "alphabet" and dataset.status != "completed"
-    ]
-    if not completed_alphabet_datasets:
-        detail = "At least one completed alphabet dataset is required before rendering."
-        if failed_or_pending:
-            detail = (
-                "Your alphabet dataset is not ready yet. Upload a valid sheet or fix "
-                "the failed dataset before rendering."
+    if not font_source.startswith("default:"):
+        datasets = list_user_datasets(user.id, workspace_session_id)
+        completed_alphabet_datasets = [
+            dataset
+            for dataset in datasets
+            if dataset.dataset_type == "alphabet" and dataset.status == "completed"
+        ]
+        failed_or_pending = [
+            dataset
+            for dataset in datasets
+            if dataset.dataset_type == "alphabet" and dataset.status != "completed"
+        ]
+        if not completed_alphabet_datasets:
+            detail = "At least one completed alphabet dataset is required before rendering."
+            if failed_or_pending:
+                detail = (
+                    "Your alphabet dataset is not ready yet. Upload a valid sheet or fix "
+                    "the failed dataset before rendering."
+                )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=detail,
             )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=detail,
-        )
 
     render_id = str(uuid4())
     created_at = now_iso()
@@ -122,8 +124,19 @@ def create_render_job(
     save_workspace_manifest(user.id, workspace_session_id, manifest)
 
     try:
-        datasets = list_completed_datasets(user.id, workspace_session_id)
-        glyph_roots = [dataset.glyph_root for dataset in datasets]
+        glyph_roots = []
+        if font_source.startswith("default:"):
+            folder_name = font_source.split(":", 1)[1]
+            default_dir = Path(get_settings().project_dir) / "Default Glyphs" / folder_name
+            hw_dir = default_dir / "Handwritten Font Glyphs"
+            sym_dir = default_dir / "Symbol Font Glyphs"
+            if hw_dir.exists():
+                glyph_roots.extend([str(d) for d in hw_dir.iterdir() if d.is_dir()])
+            if sym_dir.exists():
+                glyph_roots.extend([str(d) for d in sym_dir.iterdir() if d.is_dir()])
+        else:
+            datasets = list_completed_datasets(user.id, workspace_session_id)
+            glyph_roots = [dataset.glyph_root for dataset in datasets]
         background = get_selected_background(user.id, workspace_session_id)
         background_path = Path(background.source_image_path)
 

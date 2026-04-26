@@ -64,7 +64,7 @@ const DEMO_SLIDES: DemoSlide[] = [
   },
   {
     step: "02",
-    title: "Write Letters in the Grid(In order[Provided in example at start-page])",
+    title: "Write Letters in the Grid (In order[Provided in example at start-page])",
     tone: "Write Letters in the Grid",
     imagePath: "/demo/02-Write Letters in the Grid.png",
     imageAlt: "Write Letters in the Grid section demo screenshot",

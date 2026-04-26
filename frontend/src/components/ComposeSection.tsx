@@ -27,14 +27,14 @@ export function ComposeSection({
     <article className="surface surface--raised">
       <WorkflowSection
         step="01"
-        title="Compose"
+        title="Write Text"
         headerExtra={
           <div className="workflow-actions">
             <button
               type="button"
               className="btn btn--primary"
               onClick={onRender}
-              disabled={!canRender || isRendering}
+              disabled={isRendering}
               aria-busy={isRendering}
             >
               {isRendering ? "Rendering..." : "Render page"}

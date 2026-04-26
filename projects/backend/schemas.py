@@ -95,6 +95,7 @@ class BackgroundListResponse(BaseModel):
 class RenderCreateRequest(BaseModel):
     text: str = Field(default="")
     options: dict[str, Any] = Field(default_factory=dict)
+    font_source: str = Field(default="personal")
 
 
 class RenderJobResponse(BaseModel):
@@ -122,3 +123,4 @@ class DefaultsFeaturesResponse(BaseModel):
 class DefaultsResponse(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict)
     features: DefaultsFeaturesResponse = Field(default_factory=DefaultsFeaturesResponse)
+    fonts: list[str] = Field(default_factory=list)

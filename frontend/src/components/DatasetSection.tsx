@@ -9,6 +9,11 @@ import type {
 } from "../types";
 
 type Props = {
+  fontSource?: "personal" | "default";
+  defaultFonts?: string[];
+  selectedDefaultFont?: string;
+  onSelectDefaultFont?: (name: string) => void;
+
   isCodingMode: boolean;
   availableCounts: UploadCounts;
   datasets: DatasetRecord[];
@@ -19,6 +24,7 @@ type Props = {
   isUploading: boolean;
   busyDatasetId: string | null;
   busyBackgroundId: string | null;
+  highlightUpload?: boolean;
   onUpload: (event: ChangeEvent<HTMLInputElement>, type: UploadType) => void;
   onUploadBackground: (event: ChangeEvent<HTMLInputElement>) => void;
   onRenameDataset: (datasetId: string, displayName: string) => Promise<void>;
@@ -263,6 +269,11 @@ function BackgroundGroup({
 }
 
 export function DatasetSection({
+  fontSource = "personal",
+  defaultFonts = [],
+  selectedDefaultFont = "",
+  onSelectDefaultFont,
+
   isCodingMode,
   availableCounts,
   datasets,
@@ -273,6 +284,7 @@ export function DatasetSection({
   isUploading,
   busyDatasetId,
   busyBackgroundId,
+  highlightUpload,
   onUpload,
   onUploadBackground,
   onRenameDataset,
@@ -289,24 +301,117 @@ export function DatasetSection({
     [datasets]
   );
 
+  if (fontSource === "default") {
+    return (
+      <article id="dataset-section" className="surface surface--raised">
+        <WorkflowSection
+          step="03"
+          title="Handwriting Styles (Default)"
+          subtitle="Select a pre-installed font package."
+        >
+          {defaultFonts.length === 0 ? (
+            <div className="dataset-empty">
+              <p className="dataset-empty__title">No default fonts available</p>
+              <p className="dataset-empty__text">
+                Please add font folders to the Default Glyphs directory.
+              </p>
+            </div>
+          ) : (
+            <div className="dataset-card-grid">
+              {defaultFonts.map((fontName) => {
+                const isSelected = fontName === selectedDefaultFont;
+                return (
+                  <article className="dataset-card" key={fontName}>
+                    <div className="dataset-card__header">
+                      <span className={`status-badge status-badge--completed`}>
+                        Ready
+                      </span>
+                    </div>
+
+                    <h4 className="dataset-card__title">{fontName}</h4>
+                    <div className="dataset-card__details">
+                      <span className="dataset-pill">Pre-installed</span>
+                      <span className="dataset-card__meta">
+                        {isSelected ? "Currently selected" : "Available"}
+                      </span>
+                    </div>
+
+                    <div className="dataset-card__actions">
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--mini"
+                        disabled={isSelected}
+                        onClick={() => onSelectDefaultFont?.(fontName)}
+                      >
+                        {isSelected ? "In use" : "Select Font"}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          <section className="dataset-upload-area" style={{ marginTop: "2rem" }}>
+            {uploadError ? <ErrorBanner message={uploadError} /> : null}
+
+            <div className="workflow-section__upload-group">
+              <div className="upload-grid upload-grid--single">
+                <label className="upload-tile">
+                  <div className="upload-tile__header">
+                    <span className="upload-tile__icon upload-tile__icon--bg" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                        <circle cx="9" cy="9" r="2" />
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                      </svg>
+                    </span>
+                    <span className="upload-tile__title">Custom Background</span>
+                  </div>
+                  <span className="upload-tile__hint">
+                    Upload a custom page background image (optional)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    aria-label="Upload personal page background"
+                    onChange={onUploadBackground}
+                    disabled={isUploading || backgroundCustomCount >= backgroundLimit}
+                  />
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <BackgroundGroup
+            backgrounds={backgrounds}
+            busyBackgroundId={busyBackgroundId}
+            onSelectBackground={onSelectBackground}
+            onDeleteBackground={onDeleteBackground}
+          />
+        </WorkflowSection>
+      </article>
+    );
+  }
+
   return (
-    <article className="surface surface--raised">
+    <article id="dataset-section" className="surface surface--raised">
       <WorkflowSection
         step="03"
-        title="Datasets"
+        title="Handwriting Styles"
         subtitle={
           isCodingMode ? "More Datasets -> More Human-Written !!!" : "More Datasets -> More Human-Written !!!"
         }
       >
         <div className="library-metrics library-metrics--wide" role="group" aria-label="Dataset quotas">
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Alphabet Datasets</span>
+            <span className="metric-pill__label">Handwriting Fonts</span>
             <strong className="metric-pill__value" aria-live="polite">
               {availableCounts.handwriting} / {availableCounts.handwritingLimit}
             </strong>
           </div>
           <div className="metric-pill metric-pill--accent">
-            <span className="metric-pill__label">Coding Datasets</span>
+            <span className="metric-pill__label">Symbol Fonts</span>
             <strong className="metric-pill__value" aria-live="polite">
               {availableCounts.coding} / {availableCounts.codingLimit}
             </strong>
@@ -330,14 +435,14 @@ export function DatasetSection({
           <section className="dataset-group">
             <div className="dataset-group__header">
               <div>
-                <h3 className="dataset-group__title">Upload handwriting datasets</h3>
+                <h3 className="dataset-group__title">Upload handwriting fonts</h3>
                 
               </div>
             </div>
 
             <div className="dataset-upload-stack">
               <div className="upload-grid">
-                <label className="upload-tile">
+                <label className={`upload-tile ${highlightUpload ? 'upload-tile--pulse' : ''}`}>
                   <div className="upload-tile__header">
                     <span className="upload-tile__icon" aria-hidden="true">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -345,7 +450,7 @@ export function DatasetSection({
                         <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                       </svg>
                     </span>
-                    <span className="upload-tile__title">Alphabet Dataset (8x8)</span>
+                    <span className="upload-tile__title">Handwriting Font (8x8)</span>
                   </div>
                   <span className="upload-tile__hint">A-Z, a-z, 0-9, comma, period</span>
                   <input
@@ -364,7 +469,7 @@ export function DatasetSection({
                         <polyline points="8 6 2 12 8 18" />
                       </svg>
                     </span>
-                    <span className="upload-tile__title">Coding Dataset (6x5)</span>
+                    <span className="upload-tile__title">Symbol Font (6x5)</span>
                   </div>
                   <span className="upload-tile__hint">Special characters and symbols</span>
                   <input
@@ -405,7 +510,7 @@ export function DatasetSection({
           </section>
 
           <DatasetGroup
-            title="Alphabet datasets"
+            title="Handwriting fonts"
             helper=""
             datasets={alphabetDatasets}
             busyDatasetId={busyDatasetId}
@@ -414,7 +519,7 @@ export function DatasetSection({
           />
 
           <DatasetGroup
-            title="Coding datasets"
+            title="Symbol fonts"
             helper=""
             datasets={codingDatasets}
             busyDatasetId={busyDatasetId}

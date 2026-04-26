@@ -100,6 +100,7 @@ export default function App() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [highlightUpload, setHighlightUpload] = useState(false);
   const [defaultOptions, setDefaultOptions] =
     useState<RenderOptions>(FALLBACK_OPTIONS);
   const [options, setOptions] = useState<RenderOptions>(FALLBACK_OPTIONS);
@@ -110,6 +111,9 @@ export default function App() {
   const [busyRenderId, setBusyRenderId] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [fontSource, setFontSource] = useState<"personal" | "default">("personal");
+  const [defaultFonts, setDefaultFonts] = useState<string[]>([]);
+  const [selectedDefaultFont, setSelectedDefaultFont] = useState<string>("");
   const workspaceBootKeyRef = useRef<string | null>(null);
 
   const handleCopyConfig = useCallback(() => {
@@ -132,10 +136,11 @@ export default function App() {
   const canRender = Boolean(
     authToken &&
       workspaceSessionId &&
-      datasets.some(
-        (dataset) =>
-          dataset.dataset_type === "alphabet" && dataset.status === "completed"
-      )
+      ((fontSource === "default" && selectedDefaultFont !== "") ||
+        datasets.some(
+          (dataset) =>
+            dataset.dataset_type === "alphabet" && dataset.status === "completed"
+        ))
   );
 
 
@@ -170,10 +175,15 @@ export default function App() {
       setDefaultOptions(normalized);
       setOptions(normalized);
       setSupportsCharacterOverrides(Boolean(data.features?.charOverrides));
+      setDefaultFonts(data.fonts || []);
+      if (data.fonts && data.fonts.length > 0) {
+        setSelectedDefaultFont(data.fonts[0]);
+      }
     } catch {
       setDefaultOptions(FALLBACK_OPTIONS);
       setOptions(FALLBACK_OPTIONS);
       setSupportsCharacterOverrides(false);
+      setDefaultFonts([]);
     }
   }, []);
 
@@ -569,6 +579,14 @@ export default function App() {
       setRenderError(
         "Add at least one completed alphabet dataset before rendering."
       );
+      setHighlightUpload(true);
+      setTimeout(() => setHighlightUpload(false), 3000);
+      setTimeout(() => {
+        document.getElementById("dataset-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
       return;
     }
 
@@ -579,7 +597,11 @@ export default function App() {
     try {
       const renderPayload = await apiClient.post<RenderJobResponse>(
         "/api/v1/renders",
-        { text, options },
+        {
+          text,
+          options,
+          font_source: fontSource === "default" ? ("default:" + selectedDefaultFont) : "personal"
+        },
         { authToken, workspaceSessionId }
       );
 
@@ -883,6 +905,8 @@ export default function App() {
         canRender={canRender}
         isRendering={isRendering}
         isLoadingDatasets={isLoadingDatasets || isLoadingRenders}
+        fontSource={fontSource}
+        onToggleFontSource={setFontSource}
       />
 
       <main
@@ -929,6 +953,10 @@ export default function App() {
           />
 
           <DatasetSection
+            fontSource={fontSource}
+            defaultFonts={defaultFonts}
+            selectedDefaultFont={selectedDefaultFont}
+            onSelectDefaultFont={setSelectedDefaultFont}
             isCodingMode={isCodingMode}
             availableCounts={availableCounts}
             datasets={datasets}
@@ -939,6 +967,7 @@ export default function App() {
             isUploading={isUploading}
             busyDatasetId={busyDatasetId}
             busyBackgroundId={busyBackgroundId}
+            highlightUpload={highlightUpload}
             onUpload={handleUpload}
             onUploadBackground={handleUploadBackground}
             onRenameDataset={handleRenameDataset}

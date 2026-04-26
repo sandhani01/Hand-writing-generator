@@ -25,9 +25,9 @@ export const DEFAULT_TEXT_CODING = `public class Main {
 }`;
 
 export const FALLBACK_OPTIONS: RenderOptions = {
-  lineHeight: 67,
+  lineHeight: 60,
   charSpacing: -2,
-  wordSpacing: 40,
+  wordSpacing: 27,
   jitter: 0,
   inkColor: "#14296b",
   overallScale: 1.67,

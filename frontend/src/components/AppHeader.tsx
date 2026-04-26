@@ -11,6 +11,8 @@ type Props = {
   isLoadingDatasets: boolean;
   isRendering: boolean;
   canRender: boolean;
+  fontSource: "personal" | "default";
+  onToggleFontSource: (source: "personal" | "default") => void;
 };
 
 export function AppHeader({
@@ -24,6 +26,8 @@ export function AppHeader({
   isLoadingDatasets,
   isRendering,
   canRender,
+  fontSource,
+  onToggleFontSource,
 }: Props) {
   return (
     <header className="app-header">
@@ -34,8 +38,25 @@ export function AppHeader({
         </div>
         <div className="app-header__separator" aria-hidden="true" />
         <span className={`mode-badge ${isCodingMode ? "mode-badge--coding" : ""}`}>
-          {isCodingMode ? "Coding" : "Simple"}
+          {isCodingMode ? "Coding" : "Theory"}
         </span>
+      </div>
+
+      <div className={`font-source-switch font-source-switch--${fontSource}`} aria-label="Font source">
+        <button
+          type="button"
+          className={`font-source-switch__btn ${fontSource === 'personal' ? 'is-active' : ''}`}
+          onClick={() => onToggleFontSource('personal')}
+        >
+          Personal Fonts
+        </button>
+        <button
+          type="button"
+          className={`font-source-switch__btn ${fontSource === 'default' ? 'is-active' : ''}`}
+          onClick={() => onToggleFontSource('default')}
+        >
+          Default Fonts
+        </button>
       </div>
 
       <nav className="app-header__toolbar" aria-label="Workspace actions">
@@ -44,7 +65,7 @@ export function AppHeader({
             type="button"
             className="btn btn--primary btn--render"
             onClick={onRender}
-            disabled={!canRender || isRendering}
+            disabled={isRendering}
             aria-busy={isRendering}
           >
             {isRendering ? (

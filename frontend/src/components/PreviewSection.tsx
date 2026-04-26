@@ -49,7 +49,7 @@ export function PreviewSection({
       <article className="surface surface--preview">
         <WorkflowSection
           step="04"
-          title="Preview"
+          title="Final Output"
           subtitle="Your latest or selected render. Saved history keeps only the newest three."
           className="workflow-section--tight"
         >

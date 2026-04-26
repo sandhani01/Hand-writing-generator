@@ -36,6 +36,7 @@ def create_render(
         workspace_session_id=workspace_session_id,
         text_content=payload.text,
         options=payload.options,
+        font_source=payload.font_source,
     )
     return RenderJobResponse.model_validate(job)
 

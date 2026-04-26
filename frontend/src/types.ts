@@ -97,10 +97,11 @@ export type BackgroundListResponse = {
 };
 
 export type DefaultsResponse = {
-  options?: RenderOptions;
+  options: Partial<RenderOptions>;
   features?: {
     charOverrides?: boolean;
   };
+  fonts?: string[];
 };
 
 export type UserProfile = {

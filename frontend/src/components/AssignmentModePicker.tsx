@@ -95,7 +95,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                 </svg>
               </div>
               <div className="mode-instructions__text">
-                <div className="mode-instructions__name">Simple Assignments</div>
+                <div className="mode-instructions__name">Theory Assignments</div>
                 <div className="mode-instructions__detail">Essays, notes, and general handwriting. Upload alphabet datasets only.</div>
               </div>
               <div className="mode-instructions__arrow">
@@ -177,7 +177,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                     </svg>
                   </div>
                   <div className="mode-template-card__content" style={{ textAlign: "left" }}>
-                    <div className="mode-template-card__name">Alphabet Grid</div>
+                    <div className="mode-template-card__name">Handwriting Font Grid</div>
                     <div className="mode-template-card__size">PDF Template (8×8)</div>
                   </div>
                 </a>
@@ -242,11 +242,11 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
 
               <div className="mode-example__head" style={{ marginTop: '0.75rem', justifyContent: 'center', textAlign: 'center' }}>
                 <div className="mode-example__title">
-                  MAKE THIS BEFORE YOU START(ALPHABETS)
+                  MAKE THIS BEFORE YOU START(HANDWRITING FONT)
                 </div>
               </div>
 
-              <div className="mode-example__subtitle">alphabets grid 8x8</div>
+              <div className="mode-example__subtitle">handwriting font grid 8x8</div>
             </div>
 
             <div className="mode-example" aria-label="Example coding symbols preview">
@@ -265,7 +265,7 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                     </svg>
                   </div>
                   <div className="mode-template-card__content" style={{ textAlign: "left" }}>
-                    <div className="mode-template-card__name">Symbols Grid</div>
+                    <div className="mode-template-card__name">Symbol Font Grid</div>
                     <div className="mode-template-card__size">PDF Template (6×5)</div>
                   </div>
                 </a>
@@ -332,11 +332,11 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
 
               <div className="mode-example__head" style={{ marginTop: '0.75rem', justifyContent: 'center', textAlign: 'center' }}>
                 <div className="mode-example__title">
-                  MAKE THIS BEFORE YOU START(SYMBOLS)
+                  MAKE THIS BEFORE YOU START(SYMBOL FONT)
                 </div>
               </div>
 
-              <div className="mode-example__subtitle">coding grid 6x5</div>
+              <div className="mode-example__subtitle">symbol font grid 6x5</div>
             </div>
           </div>
         </section>

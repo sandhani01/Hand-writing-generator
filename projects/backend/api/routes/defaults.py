@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from ...schemas import DefaultsFeaturesResponse, DefaultsResponse
-from ...services.pipeline import build_frontend_defaults, build_frontend_features
+from ...services.pipeline import build_frontend_defaults, build_frontend_features, build_default_fonts
 
 router = APIRouter(tags=["defaults"])
 
@@ -16,4 +16,5 @@ def defaults() -> DefaultsResponse:
         features=DefaultsFeaturesResponse(
             charOverrides=bool(features.get("charOverrides")),
         ),
+        fonts=build_default_fonts(),
     )

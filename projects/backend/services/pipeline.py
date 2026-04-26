@@ -20,6 +20,13 @@ def build_frontend_features() -> dict:
     return api_server.build_frontend_features()
 
 
+def build_default_fonts() -> list[str]:
+    default_dir = Path(api_server.PROJECT_DIR) / "Default Glyphs"
+    if not default_dir.exists():
+        return []
+    return [d.name for d in default_dir.iterdir() if d.is_dir()]
+
+
 def extract_dataset(image_path: Path, dataset_type: str, output_folder: Path) -> Path:
     if dataset_type == "coding":
         labels = extractor.DEFAULT_CODING_SYMBOLS
