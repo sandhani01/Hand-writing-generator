@@ -50,7 +50,7 @@ const DEMO_STEPS: DemoStep[] = [
     imageAlt: "Handwritten characters filled into grid boxes",
     description:
       "Write one character per box using a dark pen. Keep your letters centered — the extractor reads each cell independently. Follow the exact order shown on the start page.",
-    actionLabel: "Watch Order",
+    actionLabel: "Know the Order",
     accent: {
       "--step-accent": "#4ade80",
       "--step-accent-dim": "rgba(74, 222, 128, 0.12)",
