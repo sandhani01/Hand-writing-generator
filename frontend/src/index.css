@@ -985,18 +985,17 @@ img {
   content: "";
   flex: 1;
   height: 1px;
-  background: linear-gradient(
-    to var(--dir, right),
-    transparent,
-    var(--line-accent),
-    transparent
-  );
+  background: linear-gradient(to var(--dir, right),
+      transparent,
+      var(--line-accent),
+      transparent);
   opacity: 0.6;
 }
 
 .mode-instructions__divider::before {
   --dir: right;
 }
+
 .mode-instructions__divider::after {
   --dir: left;
 }
@@ -1475,11 +1474,14 @@ img {
 
 /* â€”â€” Top bar â€”â€” */
 
+.header-stack {
+  display: contents;
+}
+
 .app-header {
-  position: sticky;
-  top: 0.75rem;
   margin: 0 1rem;
-  z-index: 100;
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1495,6 +1497,31 @@ img {
     0 12px 40px -12px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.08) inset;
   transition: all 0.3s var(--ease-out);
+}
+
+
+
+.app-header--primary {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 2000;
+  margin-bottom: 0.4rem;
+}
+
+.app-header--secondary {
+  height: auto;
+  min-height: 3.5rem;
+  padding: 0.5rem 1.5rem;
+  width: fit-content;
+  margin: 0.4rem auto;
+  justify-content: center;
+  z-index: 1;
+  position: relative;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 
 .app-header:hover {
@@ -1992,6 +2019,51 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
 
 .dataset-group__metrics {
   margin-bottom: 0.85rem;
+}
+
+/* Font Square Boxes */
+.font-square-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+  gap: 0.75rem;
+  margin-top: var(--space-4);
+}
+
+.font-square-box {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  padding: 0.4rem;
+  text-align: center;
+  word-break: break-word;
+}
+
+.font-square-box:hover:not(.is-selected) {
+  background: color-mix(in srgb, var(--section-tuning-dim) 50%, var(--bg-surface));
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.font-square-box.is-selected {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+  color: white;
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.font-square-box__name {
+  pointer-events: none;
 }
 
 .dataset-card-grid {
@@ -2892,8 +2964,7 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
   /* Standardized Mobile Action Circle */
   .btn--toolbar,
   .btn--logout,
-  .btn--render,
-  .theme-toggle {
+  .btn--render {
     width: 2.1rem !important;
     height: 2.1rem !important;
     min-width: 2.1rem !important;
@@ -3261,108 +3332,6 @@ html[data-theme="light"] .btn--primary {
     opacity: 0.4;
   }
 }
-
-@media (max-width: 640px) {
-  .workflow-section__head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .workflow-section__head-extra {
-    width: 100%;
-  }
-
-  .workflow-actions {
-    width: 100%;
-  }
-
-  .workflow-section__head-extra .btn {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .session-chip {
-    justify-content: flex-start;
-  }
-
-  .app-header__toolbar {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.55rem;
-  }
-
-  .app-header__user-section {
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  .app-header__actions {
-    display: grid;
-    grid-template-columns: auto 1fr 1fr 1fr;
-    gap: 0.4rem;
-    width: 100%;
-  }
-
-  .app-header__actions .theme-toggle {
-    justify-self: start;
-  }
-
-  .app-header__actions .btn {
-    min-height: 40px;
-    justify-content: center;
-  }
-
-  .app-header__actions .btn .btn__label {
-    display: none;
-  }
-
-  @media (max-width: 400px) {
-    .app-header__actions {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-
-  .mode-choice {
-    min-height: 5.75rem;
-    padding: 1rem 0.85rem;
-  }
-
-  .compose-input {
-
-    min-height: 200px;
-    font-size: 16px;
-  }
-
-  .preset-panel {
-    align-items: stretch;
-  }
-
-  .preset-panel__actions {
-    justify-content: flex-start;
-  }
-
-  .character-picker {
-    grid-template-columns: 1fr;
-  }
-
-  .character-picker__field--manual {
-    max-width: none;
-  }
-
-  .preview-frame {
-    min-height: min(280px, 45dvh);
-  }
-
-  .workspace-loader__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .workspace-loader__status {
-    align-items: flex-start;
-  }
-}
-
 
 /* â€”â€” Modals â€”â€” */
 
@@ -3819,6 +3788,60 @@ html[data-theme="light"] .font-source-switch__btn.is-active {
   transform: translateY(-4px);
 }
 
+.app--gate {
+  position: relative;
+  min-height: 100vh;
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 10%, var(--bg-base) 90%),
+    linear-gradient(to right, color-mix(in srgb, var(--accent) 15%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--accent) 15%, transparent) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.mode-picker {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  width: 100%;
+}
+
+.gate-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 15%, transparent);
+  background: transparent;
+  z-index: 2000;
+}
+
+.gate-brand {
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Accent square before brand name */
+.gate-brand::before {
+  content: "";
+  display: block;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--accent);
+  border-radius: 3px;
+  box-shadow: 0 0 12px var(--accent);
+}
+
 /* Mode Picker Header & Back Button */
 .mode-picker__header {
   position: relative;
@@ -3858,4 +3881,119 @@ html[data-theme="light"] .font-source-switch__btn.is-active {
 .mode-picker__back svg {
   width: 1.25rem;
   height: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .header-stack {
+    display: contents;
+  }
+
+  .app-header {
+    margin: 0 0.5rem;
+    height: 3.6rem;
+    padding: 0 1rem;
+    gap: 0.75rem;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .app-header--primary {
+    position: sticky;
+    top: 0.5rem;
+    margin: 0 0.5rem 0.2rem;
+    z-index: 2000;
+  }
+
+  .app-header--secondary {
+    position: relative;
+    top: auto;
+    background: transparent;
+    border: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    min-height: auto;
+    width: auto !important;
+    align-self: stretch !important;
+    margin: 0 0.5rem;
+    z-index: 1;
+    box-shadow: none;
+  }
+
+  .app-header__brand-name {
+    display: none;
+  }
+
+  .font-source-switch {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .btn--render span {
+    display: none;
+  }
+
+  .btn--render {
+    padding: 0 0.75rem;
+    min-width: auto;
+  }
+
+  .workflow-section__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .workflow-section__head-extra {
+    width: 100%;
+  }
+
+  .workflow-actions {
+    width: 100%;
+  }
+
+  .workflow-section__head-extra .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .session-chip {
+    justify-content: flex-start;
+  }
+
+  .mode-choice {
+    min-height: 5.75rem;
+    padding: 1rem 0.85rem;
+  }
+
+  .compose-input {
+    min-height: 200px;
+    font-size: 16px;
+  }
+
+  .preset-panel {
+    align-items: stretch;
+  }
+
+  .preset-panel__actions {
+    justify-content: flex-start;
+  }
+
+  .character-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .character-picker__field--manual {
+    max-width: none;
+  }
+
+  .preview-frame {
+    min-height: min(280px, 45dvh);
+  }
+
+  .workspace-loader__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-loader__status {
+    align-items: flex-start;
+  }
 }

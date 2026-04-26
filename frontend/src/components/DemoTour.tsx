@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import React, { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 
 type Props = {
   theme: "dark" | "light";
   onToggleTheme: () => void;
-  onBack: () => void;
+  onBack: (navigateToTemplates?: boolean) => void;
 };
 
 type DemoStep = {
@@ -15,7 +15,8 @@ type DemoStep = {
   imageAlt: string;
   description: string;
   accent: CSSProperties;
-  icon: JSX.Element;
+  icon: React.ReactNode;
+  actionLabel?: string;
 };
 
 const DEMO_STEPS: DemoStep[] = [
@@ -27,6 +28,7 @@ const DEMO_STEPS: DemoStep[] = [
     imageAlt: "Grid template printed on paper",
     description:
       "Download the PDF grid templates from the start page and print them on A4 paper. These ArUco-marked grids let the engine precisely locate every character you write.",
+    actionLabel: "Get Templates",
     accent: {
       "--step-accent": "#5fa8d3",
       "--step-accent-dim": "rgba(95, 168, 211, 0.12)",
@@ -88,6 +90,7 @@ const DEMO_STEPS: DemoStep[] = [
     imageAlt: "Dataset upload interface showing progress",
     description:
       "Upload your cropped images through the Datasets panel. The backend extracts every glyph automatically. Wait for the status badge to show 'Ready' before continuing.",
+    actionLabel: "Open Panel",
     accent: {
       "--step-accent": "#f59e0b",
       "--step-accent-dim": "rgba(245, 158, 11, 0.12)",
@@ -176,7 +179,7 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
       <div className="gate-topbar">
         <span className="gate-brand">Handwritten-Notes</span>
         <div className="demo-topbar__actions">
-          <button type="button" className="btn btn--ghost" onClick={onBack}>
+          <button type="button" className="btn btn--ghost" onClick={() => onBack()}>
             ← Back
           </button>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
@@ -206,7 +209,7 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
             >
               Start walkthrough
             </button>
-            <button type="button" className="btn btn--ghost" onClick={onBack}>
+            <button type="button" className="btn btn--ghost" onClick={() => onBack()}>
               Skip, I know this
             </button>
           </div>
@@ -236,6 +239,27 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
                 </div>
 
                 <div className="dtour-card__body">
+                  {/* Action callout line + button */}
+                  {step.actionLabel && (
+                    <div className="dtour-card__action">
+                      <div className="dtour-card__action-line" aria-hidden />
+                      <button
+                        type="button"
+                        className="dtour-card__action-btn"
+                        onClick={() => {
+                          if (step.step === "01") {
+                            onBack(true); // Navigate to templates page without force-downloading
+                          } else if (step.step === "04") {
+                            // If they click 'Open Panel', exit tour to main app
+                            onBack();
+                          }
+                        }}
+                      >
+                        {step.actionLabel}
+                      </button>
+                    </div>
+                  )}
+
                   {/* Header row */}
                   <div className="dtour-card__header">
                     <div className="dtour-card__icon">{step.icon}</div>
@@ -283,7 +307,7 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
           <p className="dtour-outro__text">
             Head back, pick your assignment type, and create your first handwritten page.
           </p>
-          <button type="button" className="btn btn--primary dtour-outro__btn" onClick={onBack}>
+          <button type="button" className="btn btn--primary dtour-outro__btn" onClick={() => onBack()}>
             Let's go →
           </button>
         </footer>

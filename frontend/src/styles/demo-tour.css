@@ -211,19 +211,7 @@
   display: grid;
   gap: 1rem;
   transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
-  overflow: hidden;
   position: relative;
-}
-
-.dtour-card__body::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--step-accent), transparent);
-  opacity: 0.7;
 }
 
 .dtour-card__body:hover {
@@ -440,5 +428,92 @@
 
   .dtour-card__image {
     max-height: 220px;
+  }
+}
+
+/* ── Action Callout (Line + Button) ── */
+.dtour-card__action {
+  position: absolute;
+  left: calc(100% - 12px); /* Default: pointing right */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* For right-side cards, point the callout to the left */
+.dtour-card--right .dtour-card__action {
+  left: auto;
+  right: calc(100% - 12px);
+  flex-direction: row-reverse;
+}
+
+.dtour-card__action-line {
+  width: 200px;
+  height: 1px;
+  background: var(--step-accent);
+  opacity: 0.5;
+  position: relative;
+}
+
+/* Add a tiny terminator dot at the card edge */
+.dtour-card__action-line::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: -50% -50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--step-accent);
+  box-shadow: 0 0 8px var(--step-accent);
+}
+
+/* Flip terminator for left-pointing lines */
+.dtour-card--right .dtour-card__action-line::before {
+  left: auto;
+  right: 0;
+  translate: 50% -50%;
+}
+
+.dtour-card__action-btn {
+  pointer-events: auto;
+  white-space: nowrap;
+  background: var(--bg-surface);
+  border: 1px solid var(--step-accent);
+  color: var(--step-accent);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Subtle slide-in from the correct side on hover */
+.dtour-card--left .dtour-card__action-btn:hover {
+  transform: translateX(6px);
+}
+.dtour-card--right .dtour-card__action-btn:hover {
+  transform: translateX(-6px);
+}
+
+.dtour-card__action-btn:hover {
+  background: var(--step-accent);
+  color: var(--bg-base);
+  transform: translateX(4px);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--step-accent) 40%, transparent);
+}
+
+@media (max-width: 1100px) {
+  /* Hide callout if viewport is too narrow to avoid side-scrolling */
+  .dtour-card__action {
+    display: none;
   }
 }

@@ -4,10 +4,15 @@ import type { AssignmentMode } from "../types";
 type Props = {
   onSelect: (mode: AssignmentMode) => void;
   onOpenDemo: () => void;
+  initialTemplatesView?: boolean;
 };
 
-export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
-  const [showTemplates, setShowTemplates] = useState(false);
+export function AssignmentModePicker({
+  onSelect,
+  onOpenDemo,
+  initialTemplatesView = false,
+}: Props) {
+  const [showTemplates, setShowTemplates] = useState(initialTemplatesView);
 
   return (
     <div
@@ -117,18 +122,6 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
                 type="button"
                 className="mode-instructions__item mode-instructions__item--templates"
                 onClick={() => {
-                  // Trigger downloads
-                  const alphabetLink = document.createElement("a");
-                  alphabetLink.href = "/alphabet_grid.pdf";
-                  alphabetLink.download = "Handwriting_Template_Alphabets.pdf";
-                  
-                  const symbolsLink = document.createElement("a");
-                  symbolsLink.href = "/symbols_grid.pdf";
-                  symbolsLink.download = "Handwriting_Template_Symbols.pdf";
-                  
-                  alphabetLink.click();
-                  setTimeout(() => symbolsLink.click(), 100); // Small delay to ensure both trigger
-                  
                   // Show the preview page
                   setShowTemplates(true);
                 }}

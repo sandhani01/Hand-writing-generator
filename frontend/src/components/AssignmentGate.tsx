@@ -8,6 +8,7 @@ type Props = {
   onSelectMode: (mode: AssignmentMode) => void;
   onOpenDemo: () => void;
   onLogout: () => void;
+  initialTemplatesView?: boolean;
 };
 
 export function AssignmentGate({
@@ -15,6 +16,7 @@ export function AssignmentGate({
   onToggleTheme,
   onSelectMode,
   onOpenDemo,
+  initialTemplatesView = false,
 }: Omit<Props, "onLogout">) {
   return (
     <div className="app app--gate">
@@ -27,7 +29,11 @@ export function AssignmentGate({
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
       </div>
-      <AssignmentModePicker onSelect={onSelectMode} onOpenDemo={onOpenDemo} />
+      <AssignmentModePicker
+        onSelect={onSelectMode}
+        onOpenDemo={onOpenDemo}
+        initialTemplatesView={initialTemplatesView}
+      />
     </div>
   );
 }

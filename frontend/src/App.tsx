@@ -93,6 +93,7 @@ export default function App() {
     () => readStoredAssignmentMode()
   );
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const [initialTemplatesView, setInitialTemplatesView] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [isLoadingDatasets, setIsLoadingDatasets] = useState(false);
@@ -871,7 +872,12 @@ export default function App() {
         <DemoTour
           theme={theme}
           onToggleTheme={toggleTheme}
-          onBack={() => setIsDemoOpen(false)}
+          onBack={(andGoToTemplates) => {
+            setIsDemoOpen(false);
+            if (andGoToTemplates) {
+              setInitialTemplatesView(true);
+            }
+          }}
         />
       );
     }
@@ -881,7 +887,11 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onSelectMode={selectAssignmentMode}
-        onOpenDemo={() => setIsDemoOpen(true)}
+        onOpenDemo={() => {
+          setInitialTemplatesView(false); // Reset when opening demo
+          setIsDemoOpen(true);
+        }}
+        initialTemplatesView={initialTemplatesView}
       />
     );
   }

@@ -317,35 +317,19 @@ export function DatasetSection({
               </p>
             </div>
           ) : (
-            <div className="dataset-card-grid">
+            <div className="font-square-grid">
               {defaultFonts.map((fontName) => {
                 const isSelected = fontName === selectedDefaultFont;
                 return (
-                  <article 
-                    className={`dataset-card ${isSelected ? 'dataset-card--selected' : ''}`} 
+                  <button 
+                    type="button"
+                    className={`font-square-box ${isSelected ? 'is-selected' : ''}`} 
                     key={fontName}
                     onClick={() => onSelectDefaultFont?.(fontName)}
-                    style={{ cursor: 'pointer' }}
+                    title={isSelected ? "Currently selected" : `Select ${fontName}`}
                   >
-                    <div className="dataset-card__header">
-                      <span className="status-badge status-badge--completed">
-                        Ready
-                      </span>
-                      {isSelected && (
-                        <span className="dataset-pill" style={{ color: 'var(--success-text)', border: '1px solid var(--success-border)' }}>
-                          Selected
-                        </span>
-                      )}
-                    </div>
-
-                    <h4 className="dataset-card__title">{fontName}</h4>
-                    <div className="dataset-card__details">
-                      <span className="dataset-pill">Pre-installed</span>
-                      <span className="dataset-card__meta">
-                        {isSelected ? "Currently selected" : "Available"}
-                      </span>
-                    </div>
-                  </article>
+                    <span className="font-square-box__name">{fontName}</span>
+                  </button>
                 );
               })}
             </div>
