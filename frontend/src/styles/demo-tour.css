@@ -1,0 +1,444 @@
+/* ═══════════════════════════════════════════════════════════
+   DEMO TOUR — Vertical timeline walkthrough
+   ═══════════════════════════════════════════════════════════ */
+
+.app--demo {
+  width: min(1100px, calc(100% - clamp(1.5rem, 5vw, 3rem)));
+}
+
+.demo-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.demo-tour {
+  display: grid;
+  gap: 0;
+  padding: 0 0 3rem;
+}
+
+/* ── Hero ── */
+.dtour-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2xl);
+  padding: clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 4vw, 2.5rem);
+  background:
+    radial-gradient(ellipse 70% 50% at 20% -10%, rgba(61, 122, 92, 0.12), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 100%, rgba(95, 168, 211, 0.08), transparent 55%),
+    var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dtour-hero__glow {
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  translate: -50% 0;
+  width: 28rem;
+  height: 28rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow), transparent 65%);
+  pointer-events: none;
+  animation: dtour-glow-pulse 6s ease-in-out infinite;
+}
+
+@keyframes dtour-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.dtour-hero__eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 0.3rem 0.9rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-dim);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.dtour-hero__title {
+  position: relative;
+  margin: 1.2rem 0 0;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, var(--ink) 40%, var(--accent-strong));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dtour-hero__lede {
+  position: relative;
+  margin: 1rem 0 0;
+  max-width: 42ch;
+  color: var(--ink-secondary);
+  line-height: 1.7;
+  font-size: 1.05rem;
+}
+
+.dtour-hero__cta {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.8rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Timeline Container ── */
+.dtour-timeline {
+  position: relative;
+  display: grid;
+  gap: 0;
+  padding: 3rem 0 2rem;
+}
+
+.dtour-timeline__rail {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  translate: -50% 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--line-strong) 8%,
+    var(--line-strong) 92%,
+    transparent 100%
+  );
+}
+
+/* ── Timeline Card ── */
+.dtour-card {
+  --step-accent: var(--accent);
+  --step-accent-dim: var(--accent-dim);
+  --step-glow: var(--accent-glow);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 48px 1fr;
+  align-items: start;
+  padding: 1.5rem 0;
+
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dtour-card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dtour-card--left .dtour-card__body {
+  grid-column: 1;
+  grid-row: 1;
+}
+.dtour-card--left .dtour-card__node {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.dtour-card--right .dtour-card__body {
+  grid-column: 3;
+  grid-row: 1;
+}
+.dtour-card--right .dtour-card__node {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* ── Timeline Node ── */
+.dtour-card__node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  justify-self: center;
+  padding-top: 1.2rem;
+  z-index: 2;
+}
+
+.dtour-card__node-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--step-accent);
+  border: 3px solid var(--bg-base);
+  box-shadow: 0 0 0 2px var(--step-accent),
+              0 0 16px var(--step-glow);
+  transition: box-shadow 0.4s ease;
+}
+
+.dtour-card.is-visible .dtour-card__node-dot {
+  box-shadow: 0 0 0 2px var(--step-accent),
+              0 0 24px color-mix(in srgb, var(--step-accent) 40%, transparent);
+}
+
+.dtour-card__node-num {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--step-accent);
+}
+
+/* ── Card Body ── */
+.dtour-card__body {
+  border: 1px solid color-mix(in srgb, var(--step-accent) 18%, var(--line));
+  border-radius: var(--radius-xl);
+  padding: clamp(1.2rem, 2.5vw, 1.6rem);
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--step-accent-dim) 60%, var(--bg-elevated)) 0%,
+      var(--bg-surface) 100%);
+  box-shadow:
+    var(--shadow-card),
+    0 12px 40px -6px color-mix(in srgb, var(--step-accent) 6%, transparent);
+  display: grid;
+  gap: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.dtour-card__body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--step-accent), transparent);
+  opacity: 0.7;
+}
+
+.dtour-card__body:hover {
+  border-color: color-mix(in srgb, var(--step-accent) 30%, var(--line));
+  box-shadow:
+    var(--shadow-card),
+    0 20px 50px -8px color-mix(in srgb, var(--step-accent) 10%, transparent);
+  transform: translateY(-2px);
+}
+
+/* ── Card Header ── */
+.dtour-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.dtour-card__icon {
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--step-accent-dim);
+  color: var(--step-accent);
+  border: 1px solid color-mix(in srgb, var(--step-accent) 22%, transparent);
+  transition: transform 0.3s ease;
+}
+
+.dtour-card__body:hover .dtour-card__icon {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+.dtour-card__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.dtour-card__subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ink-tertiary);
+  font-weight: 500;
+}
+
+/* ── Card Media ── */
+.dtour-card__media {
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--step-accent) 14%, var(--line));
+  background: color-mix(in srgb, var(--bg-muted) 80%, transparent);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  position: relative;
+}
+
+.dtour-card__media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 35% at 50% 0%,
+    color-mix(in srgb, var(--step-accent) 7%, transparent),
+    transparent 55%
+  );
+  pointer-events: none;
+}
+
+.dtour-card__image {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.dtour-card__body:hover .dtour-card__image {
+  transform: scale(1.02);
+}
+
+.dtour-card__placeholder {
+  padding: 2rem;
+  text-align: center;
+  display: grid;
+  place-items: center;
+  gap: 0.5rem;
+  min-height: 160px;
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--step-accent) 8%, transparent), transparent 45%),
+    repeating-linear-gradient(135deg,
+      transparent 0, transparent 14px,
+      color-mix(in srgb, var(--step-accent-dim) 40%, transparent) 14px,
+      color-mix(in srgb, var(--step-accent-dim) 40%, transparent) 28px
+    );
+}
+
+.dtour-card__placeholder-step {
+  display: inline-flex;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--step-accent-dim);
+  color: var(--step-accent);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.dtour-card__placeholder-label {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.85rem;
+}
+
+/* ── Card Description ── */
+.dtour-card__desc {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  max-width: 48ch;
+}
+
+/* ── Outro ── */
+.dtour-outro {
+  text-align: center;
+  padding: 2.5rem clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2xl);
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 100%, var(--accent-dim), transparent 60%),
+    var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.dtour-outro__badge {
+  width: 3.2rem;
+  height: 3.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--success-bg);
+  border: 2px solid var(--success-border);
+  color: var(--success-text);
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.dtour-outro__title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dtour-outro__text {
+  margin: 0.7rem 0 0;
+  color: var(--ink-secondary);
+  max-width: 38ch;
+  line-height: 1.6;
+}
+
+.dtour-outro__btn {
+  margin-top: 1.5rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 800px) {
+  .dtour-timeline__rail {
+    left: 24px;
+  }
+
+  .dtour-card {
+    grid-template-columns: 48px 1fr;
+    padding: 1rem 0;
+  }
+
+  .dtour-card--left .dtour-card__body,
+  .dtour-card--right .dtour-card__body {
+    grid-column: 2;
+  }
+
+  .dtour-card--left .dtour-card__node,
+  .dtour-card--right .dtour-card__node {
+    grid-column: 1;
+  }
+
+  .dtour-card__node {
+    padding-top: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dtour-hero__cta {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .dtour-hero__cta .btn {
+    width: 100%;
+  }
+
+  .dtour-card__image {
+    max-height: 220px;
+  }
+}

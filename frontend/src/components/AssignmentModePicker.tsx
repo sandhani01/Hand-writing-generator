@@ -6,53 +6,8 @@ type Props = {
   onOpenDemo: () => void;
 };
 
-const ALPHABET_GRID_8X8: string[][] = [
-  ["A", "B", "C", "D", "E", "F", "G", "H"],
-  ["I", "J", "K", "L", "M", "N", "O", "p"],
-  ["Q", "R", "S", "T", "U", "V", "W", "X"],
-  ["Y", "Z", "a", "b", "c", "d", "e", "f"],
-  ["g", "h", "i", "j", "k", "l", "m", "n"],
-  ["o", "p", "q", "r", "s", "t", "u", "v"],
-  ["w", "x", "y", "z", "0", "1", "2", "3"],
-  ["4", "5", "6", "7", "8", "9", ",", "."],
-];
-
-const CODING_SYMBOLS_6X5: string[] = [
-  "!",
-  "@",
-  "#",
-  "%",
-  "^",
-  "&",
-  "*",
-  "(",
-  ")",
-  "-",
-  "_",
-  "=",
-  "+",
-  "[",
-  "]",
-  "{",
-  "}",
-  ";",
-  ":",
-  "'",
-  '"',
-  "<",
-  ">",
-  "/",
-  "?",
-  "\\",
-  "|",
-  "`",
-  "~",
-  "",
-];
-
 export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
-  const [showRealAlphabet, setShowRealAlphabet] = useState(true);
-  const [showRealCoding, setShowRealCoding] = useState(true);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   return (
     <div
@@ -65,280 +20,206 @@ export function AssignmentModePicker({ onSelect, onOpenDemo }: Props) {
     >
       <div className="mode-picker__inner">
         <header className="mode-picker__header">
-     
+          {showTemplates && (
+            <button
+              className="mode-picker__back"
+              onClick={() => setShowTemplates(false)}
+              aria-label="Back to modes"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
           <h1 id="mode-picker-title" className="mode-picker__title">
-            What's Your Assignment ?<br />
-            
+            {showTemplates ? "Download Templates" : "What's Your Assignment?"}
           </h1>
-          
         </header>
 
         <section className="mode-picker__instructions" aria-label="Mode instructions">
-          <div
-            className="mode-instructions mode-instructions--triad"
-            role="group"
-            aria-label="Simple, demo, and coding modes"
-          >
-            <button
-              type="button"
-              className="mode-instructions__item mode-instructions__item--simple"
-              onClick={() => onSelect("simple")}
+          {!showTemplates ? (
+            <div
+              className="mode-instructions mode-instructions--triad"
+              role="group"
+              aria-label="Simple, demo, and coding modes"
             >
-            
-              <div
-                className="mode-instructions__icon mode-instructions__icon--simple"
-                aria-hidden
+              <button
+                type="button"
+                className="mode-instructions__item mode-instructions__item--simple"
+                onClick={() => onSelect("simple")}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
-              </div>
-              <div className="mode-instructions__text">
-                <div className="mode-instructions__name">Theory Assignments</div>
-                <div className="mode-instructions__detail">Essays, notes, and general handwriting. Upload alphabet datasets only.</div>
-              </div>
-              <div className="mode-instructions__arrow">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className="mode-instructions__item mode-instructions__item--demo"
-              onClick={onOpenDemo}
-            >
-        
-              <div
-                className="mode-instructions__icon mode-instructions__icon--demo"
-                aria-hidden
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
-                </svg>
-              </div>
-              <div className="mode-instructions__text">
-                <div className="mode-instructions__name">Demo Tour</div>
-                <div className="mode-instructions__detail">Learn how the app works with a guided walkthrough of all features.</div>
-              </div>
-              <div className="mode-instructions__arrow">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className="mode-instructions__item mode-instructions__item--coding"
-              onClick={() => onSelect("coding")}
-            >
- 
-              <div
-                className="mode-instructions__icon mode-instructions__icon--coding"
-                aria-hidden
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="16 18 22 12 16 6" />
-                  <polyline points="8 6 2 12 8 18" />
-                </svg>
-              </div>
-              <div className="mode-instructions__text">
-                <div className="mode-instructions__name">Coding Assignments</div>
-                <div className="mode-instructions__detail">Code with special characters. Upload both alphabet and coding symbol datasets.</div>
-              </div>
-              <div className="mode-instructions__arrow">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </div>
-            </button>
-          </div>
-
-
-
-          <div className="mode-examples" aria-label="Example grids preview">
-            <div className="mode-example" aria-label="Example alphabet grid preview">
-              <div style={{ marginBottom: '1rem' }}>
-                <a 
-                  href="/alphabet_grid.pdf" 
-                  download="Handwriting_Template_Alphabets.pdf"
-                  className="mode-template-card"
-                >
-                  <div className="mode-template-card__icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <line x1="12" y1="18" x2="12" y2="12"/>
-                      <polyline points="9 15 12 12 15 15"/>
-                    </svg>
-                  </div>
-                  <div className="mode-template-card__content" style={{ textAlign: "left" }}>
-                    <div className="mode-template-card__name">Handwriting Font Grid</div>
-                    <div className="mode-template-card__size">PDF Template (8×8)</div>
-                  </div>
-                </a>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
-                <button
-                  type="button"
-                  className="mode-example__toggle"
-                  onClick={() => setShowRealAlphabet((value) => !value)}
-                >
-                  {showRealAlphabet ? "Show Digital" : "Show Real"}
-                </button>
-              </div>
-
-              <div
-                className="mode-flip mode-flip--alphabet"
-                role="region"
-                aria-label="Alphabet grid flip preview"
-              >
-                <div
-                  className={`mode-flip__inner ${showRealAlphabet ? "is-flipped" : ""}`}
-                >
-                  <div
-                    className="mode-flip__face mode-flip__face--front"
-                    aria-label="Digital alphabet grid"
-                  >
-                    <div
-                      className="mode-example__digital-grid mode-example__digital-grid--alphabet"
-                      role="grid"
-                      aria-label="Digital alphabet grid example"
-                    >
-                      {ALPHABET_GRID_8X8.flatMap((row, r) =>
-                        row.map((cell, c) => (
-                          <div
-                            key={`${r}-${c}`}
-                            role="gridcell"
-                            aria-label={`cell ${r + 1},${c + 1}: ${cell}`}
-                            className="mode-example__digital-cell"
-                          >
-                            {cell}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div
-                    className="mode-flip__face mode-flip__face--back"
-                    aria-label="Real handwriting alphabet grid"
-                  >
-                    <img
-                      className="mode-example__real-img"
-                      src="/handwriting.jpg"
-                      alt="Real handwriting alphabet grid example"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </div>
+                <div className="mode-instructions__icon mode-instructions__icon--simple" aria-hidden>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
                 </div>
-              </div>
-
-              <div className="mode-example__head" style={{ marginTop: '0.75rem', justifyContent: 'center', textAlign: 'center' }}>
-                <div className="mode-example__title">
-                  MAKE THIS BEFORE YOU START(HANDWRITING FONT)
+                <div className="mode-instructions__text">
+                  <div className="mode-instructions__name">Theory Assignments</div>
+                  <div className="mode-instructions__detail">Essays, notes, and general handwriting. Upload alphabet datasets only.</div>
                 </div>
+                <div className="mode-instructions__arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="mode-instructions__item mode-instructions__item--coding"
+                onClick={() => onSelect("coding")}
+              >
+                <div className="mode-instructions__icon mode-instructions__icon--coding" aria-hidden>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 18 22 12 16 6" />
+                    <polyline points="8 6 2 12 8 18" />
+                  </svg>
+                </div>
+                <div className="mode-instructions__text">
+                  <div className="mode-instructions__name">Coding Assignments</div>
+                  <div className="mode-instructions__detail">Code with special characters. Upload both alphabet and coding symbol datasets.</div>
+                </div>
+                <div className="mode-instructions__arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
+              <div className="mode-instructions__divider">
+                <span>Need a helping hand? Start here →</span>
               </div>
 
-              <div className="mode-example__subtitle">handwriting font grid 8x8</div>
+              <button
+                type="button"
+                className="mode-instructions__item mode-instructions__item--demo"
+                onClick={onOpenDemo}
+              >
+                <div className="mode-instructions__icon mode-instructions__icon--demo" aria-hidden>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+                  </svg>
+                </div>
+                <div className="mode-instructions__text">
+                  <div className="mode-instructions__name">Demo Tour</div>
+                  <div className="mode-instructions__detail">Learn how the app works with a guided walkthrough of all features.</div>
+                </div>
+                <div className="mode-instructions__arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="mode-instructions__item mode-instructions__item--templates"
+                onClick={() => {
+                  // Trigger downloads
+                  const alphabetLink = document.createElement("a");
+                  alphabetLink.href = "/alphabet_grid.pdf";
+                  alphabetLink.download = "Handwriting_Template_Alphabets.pdf";
+                  
+                  const symbolsLink = document.createElement("a");
+                  symbolsLink.href = "/symbols_grid.pdf";
+                  symbolsLink.download = "Handwriting_Template_Symbols.pdf";
+                  
+                  alphabetLink.click();
+                  setTimeout(() => symbolsLink.click(), 100); // Small delay to ensure both trigger
+                  
+                  // Show the preview page
+                  setShowTemplates(true);
+                }}
+              >
+                <div className="mode-instructions__icon mode-instructions__icon--templates" aria-hidden>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </div>
+                <div className="mode-instructions__text">
+                  <div className="mode-instructions__name">Download Templates</div>
+                  <div className="mode-instructions__detail">Get the printable PDF grids needed to create your handwriting font.</div>
+                </div>
+                <div className="mode-instructions__arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
+
+
+
             </div>
-
-            <div className="mode-example" aria-label="Example coding symbols preview">
-              <div style={{ marginBottom: '1rem' }}>
-                <a 
-                  href="/symbols_grid.pdf" 
-                  download="Handwriting_Template_Symbols.pdf"
-                  className="mode-template-card"
-                >
-                  <div className="mode-template-card__icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <line x1="12" y1="18" x2="12" y2="12"/>
-                      <polyline points="9 15 12 12 15 15"/>
-                    </svg>
-                  </div>
-                  <div className="mode-template-card__content" style={{ textAlign: "left" }}>
-                    <div className="mode-template-card__name">Symbol Font Grid</div>
-                    <div className="mode-template-card__size">PDF Template (6×5)</div>
-                  </div>
-                </a>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.25rem' }}>
-                <button
-                  type="button"
-                  className="mode-example__toggle"
-                  onClick={() => setShowRealCoding((value) => !value)}
-                >
-                  {showRealCoding ? "Show Digital" : "Show Real"}
-                </button>
-              </div>
-
-              <div
-                className="mode-flip mode-flip--coding"
-                role="region"
-                aria-label="Coding grid flip preview"
-              >
-                <div
-                  className={`mode-flip__inner ${showRealCoding ? "is-flipped" : ""}`}
-                >
-                  <div
-                    className="mode-flip__face mode-flip__face--front"
-                    aria-label="Digital coding grid"
+          ) : (
+            <div className="mode-examples" aria-label="Example grids preview" style={{ marginTop: 0 }}>
+              <div className="mode-example" aria-label="Example alphabet grid preview">
+                <div style={{ marginBottom: "1rem" }}>
+                  <a
+                    href="/alphabet_grid.pdf"
+                    download="Handwriting_Template_Alphabets.pdf"
+                    className="mode-template-card"
                   >
-                    <div
-                      className="mode-example__digital-grid mode-example__digital-grid--coding"
-                      role="grid"
-                      aria-label="Digital coding grid example"
-                    >
-                      {CODING_SYMBOLS_6X5.map((cell, index) => {
-                        const r = Math.floor(index / 6);
-                        const c = index % 6;
-                        return (
-                          <div
-                            key={`${r}-${c}`}
-                            role="gridcell"
-                            aria-label={`cell ${r + 1},${c + 1}: ${cell}`}
-                            className="mode-example__digital-cell"
-                          >
-                            {cell}
-                          </div>
-                        );
-                      })}
+                    <div className="mode-template-card__icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <polyline points="9 15 12 12 15 15" />
+                      </svg>
                     </div>
-                  </div>
+                    <div className="mode-template-card__content" style={{ textAlign: "left" }}>
+                      <div className="mode-template-card__name">Handwriting Font Grid</div>
+                      <div className="mode-template-card__size">PDF Template (8×8)</div>
+                    </div>
+                  </a>
+                </div>
 
-                  <div
-                    className="mode-flip__face mode-flip__face--back"
-                    aria-label="Real coding symbols grid"
+                <div className="mode-example__img-container">
+                  <img className="mode-example__real-img" src="/handwriting.jpg" alt="Handwriting alphabet grid" loading="lazy" />
+                </div>
+
+                <div className="mode-example__head" style={{ marginTop: "1rem", textAlign: "center" }}>
+                  <div className="mode-example__title">ALPHABET GRID TEMPLATE (8×8)</div>
+                </div>
+              </div>
+
+              <div className="mode-example" aria-label="Example coding symbols preview">
+                <div style={{ marginBottom: "1rem" }}>
+                  <a
+                    href="/symbols_grid.pdf"
+                    download="Handwriting_Template_Symbols.pdf"
+                    className="mode-template-card"
                   >
-                    <img
-                      className="mode-example__real-img"
-                      src="/coding_symbols.jpg"
-                      alt="Real coding symbols grid example"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </div>
+                    <div className="mode-template-card__icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <polyline points="9 15 12 12 15 15" />
+                      </svg>
+                    </div>
+                    <div className="mode-template-card__content" style={{ textAlign: "left" }}>
+                      <div className="mode-template-card__name">Symbol Font Grid</div>
+                      <div className="mode-template-card__size">PDF Template (6×5)</div>
+                    </div>
+                  </a>
+                </div>
+
+                <div className="mode-example__img-container">
+                  <img className="mode-example__real-img" src="/coding_symbols.jpg" alt="Symbols grid" loading="lazy" />
+                </div>
+
+                <div className="mode-example__head" style={{ marginTop: "1rem", textAlign: "center" }}>
+                  <div className="mode-example__title">SYMBOLS GRID TEMPLATE (6×5)</div>
                 </div>
               </div>
-
-              <div className="mode-example__head" style={{ marginTop: '0.75rem', justifyContent: 'center', textAlign: 'center' }}>
-                <div className="mode-example__title">
-                  MAKE THIS BEFORE YOU START(SYMBOL FONT)
-                </div>
-              </div>
-
-              <div className="mode-example__subtitle">symbol font grid 6x5</div>
             </div>
-          </div>
+          )}
         </section>
       </div>
     </div>
