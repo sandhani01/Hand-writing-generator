@@ -353,7 +353,7 @@ export function DatasetSection({
           )}
 
           <section className="dataset-upload-area" style={{ marginTop: "2rem" }}>
-            {uploadError ? <ErrorBanner message={uploadError} /> : null}
+            {uploadError ? <ErrorBanner>{uploadError}</ErrorBanner> : null}
 
             <div className="workflow-section__upload-group">
               <div className="upload-grid upload-grid--single">

@@ -4,7 +4,6 @@ import { WorkflowSection } from "./WorkflowSection";
 type Props = {
   isCodingMode: boolean;
   text: string;
-  canRender: boolean;
   isRendering: boolean;
   renderError: string | null;
   onTextChange: (value: string) => void;
@@ -14,7 +13,6 @@ type Props = {
 export function ComposeSection({
   isCodingMode,
   text,
-  canRender,
   isRendering,
   renderError,
   onTextChange,

@@ -10,7 +10,6 @@ type Props = {
   onRender: () => void;
   isLoadingDatasets: boolean;
   isRendering: boolean;
-  canRender: boolean;
   fontSource: "personal" | "default";
   onToggleFontSource: (source: "personal" | "default") => void;
 };
@@ -25,7 +24,6 @@ export function AppHeader({
   onRender,
   isLoadingDatasets,
   isRendering,
-  canRender,
   fontSource,
   onToggleFontSource,
 }: Props) {

@@ -902,7 +902,6 @@ export default function App() {
         }
         onResetWorkspace={() => void resetWorkspace()}
         onRender={handleRender}
-        canRender={canRender}
         isRendering={isRendering}
         isLoadingDatasets={isLoadingDatasets || isLoadingRenders}
         fontSource={fontSource}
@@ -918,7 +917,6 @@ export default function App() {
           <ComposeSection
             isCodingMode={isCodingMode}
             text={text}
-            canRender={canRender}
             isRendering={isRendering}
             renderError={renderError}
             onTextChange={setText}
