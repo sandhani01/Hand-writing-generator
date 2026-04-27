@@ -10,9 +10,11 @@ if str(PROJECT_DIR) not in sys.path:
 import api_server  # noqa: E402
 import extractor  # noqa: E402
 import renderer  # noqa: E402
+import font_gen  # noqa: E402
 
 
 def build_frontend_defaults() -> dict:
+
     return api_server.build_frontend_default_options()
 
 
@@ -74,3 +76,25 @@ def render_page(
         cfg=cfg,
     )
     return output_path
+
+
+def generate_font_file(
+    glyph_roots: list[str],
+    font_name: str,
+    output_path: Path,
+    fmt: str = "ttf",
+) -> Path:
+    library = font_gen.load_glyph_images(glyph_roots)
+    if not library:
+        raise ValueError("No glyph images found in the specified datasets.")
+
+    font = font_gen.build_font(library, font_name=font_name)
+    font.save(str(output_path))
+
+    if fmt == "woff":
+        woff_path = output_path.with_suffix(".woff")
+        font_gen.convert_to_woff(str(output_path), str(woff_path))
+        return woff_path
+
+    return output_path
+

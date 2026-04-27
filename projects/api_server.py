@@ -20,6 +20,11 @@ try:
 except ImportError:
     extractor = None
 
+try:
+    import font_gen  # noqa: E402
+except ImportError:
+    font_gen = None
+
 
 DEFAULT_PORT = 8001
 SESSIONS = {}
@@ -465,6 +470,10 @@ class ApiHandler(BaseHTTPRequestHandler):
             self.handle_render()
             return
 
+        if parsed.path == "/api/generate-font":
+            self.handle_generate_font()
+            return
+
         json_response(self, 404, {"error": "Not found"})
 
     def handle_extract(self):
@@ -609,6 +618,90 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
 
         bytes_response(self, 200, output_path.read_bytes(), "image/png")
+
+    def handle_generate_font(self):
+        if font_gen is None:
+            json_response(
+                self,
+                501,
+                {
+                    "error": "Font generation is not available.",
+                    "details": "font_gen.py is missing from the projects folder.",
+                },
+            )
+            return
+
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length)
+
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except json.JSONDecodeError:
+            json_response(self, 400, {"error": "Invalid JSON"})
+            return
+
+        font_name = data.get("fontName", "My Handwriting")
+        fmt = data.get("format", "ttf")  # ttf or woff
+
+        session_id = data.get("sessionId")
+        existing_handwriting, existing_coding = ensure_datasets()
+        if session_id and session_id in SESSIONS:
+            handwriting_sets = dedupe_paths(
+                SESSIONS[session_id]["handwriting"] + existing_handwriting
+            )
+            coding_sets = dedupe_paths(
+                SESSIONS[session_id]["coding"] + existing_coding
+            )
+        else:
+            handwriting_sets, coding_sets = existing_handwriting, existing_coding
+
+        glyph_roots = handwriting_sets + coding_sets
+        if not glyph_roots:
+            json_response(
+                self,
+                400,
+                {"error": "No glyph datasets found. Upload handwriting samples first."},
+            )
+            return
+
+        try:
+            library = font_gen.load_glyph_images(glyph_roots)
+            if not library:
+                json_response(
+                    self, 400, {"error": "No glyph images found in the datasets."}
+                )
+                return
+
+            font = font_gen.build_font(library, font_name=font_name)
+
+            output_dir = resolve_output_dir()
+            safe_name = font_name.replace(" ", "_")
+            ttf_path = output_dir / f"{safe_name}.ttf"
+            font.save(str(ttf_path))
+
+            if fmt == "woff":
+                woff_path = output_dir / f"{safe_name}.woff"
+                font_gen.convert_to_woff(str(ttf_path), str(woff_path))
+                bytes_response(
+                    self,
+                    200,
+                    woff_path.read_bytes(),
+                    "font/woff",
+                )
+            else:
+                bytes_response(
+                    self,
+                    200,
+                    ttf_path.read_bytes(),
+                    "font/ttf",
+                )
+        except Exception as exc:
+            print("Font generation error:", exc)
+            json_response(
+                self,
+                500,
+                {"error": "Font generation failed", "details": str(exc)},
+            )
 
 
 def run():

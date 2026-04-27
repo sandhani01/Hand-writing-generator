@@ -124,3 +124,9 @@ class DefaultsResponse(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict)
     features: DefaultsFeaturesResponse = Field(default_factory=DefaultsFeaturesResponse)
     fonts: list[str] = Field(default_factory=list)
+
+
+class FontGenerateRequest(BaseModel):
+    fontName: str = Field(default="My Handwriting")
+    format: str = Field(default="ttf")  # ttf or woff
+
