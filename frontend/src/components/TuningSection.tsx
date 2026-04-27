@@ -83,6 +83,7 @@ export function TuningSection({
       <WorkflowSection
         step="02"
         title="Adjust Style"
+        className="workflow-section--tuning"
         headerExtra={
           <div className="workflow-actions">
             <button
