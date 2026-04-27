@@ -679,10 +679,12 @@ img {
 
 
 .mode-picker__inner {
+  position: relative;
   width: 100%;
 }
 
 .mode-picker__header {
+  position: relative;
   text-align: center;
   margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
 }
@@ -737,14 +739,143 @@ img {
   gap: 1.5rem;
 }
 
-.mode-templates {
+.workspace-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  padding: 0.5rem;
+  animation: slide-up 0.4s var(--ease-out);
+}
+
+.workspace-card {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding: 1.25rem;
-  border-radius: var(--radius-xl);
-  background: color-mix(in srgb, var(--accent) 3%, var(--bg-surface));
+  align-items: center;
+  text-align: center;
+  gap: 1.25rem;
+  padding: 2.5rem 1.5rem;
+  background: var(--bg-surface);
   border: 1px solid var(--line);
+  border-radius: var(--radius-2xl);
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, var(--accent-glow), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s var(--ease-out);
+}
+
+.workspace-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  background: var(--bg-surface-hover);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--line-accent);
+}
+
+.workspace-card:hover::before {
+  opacity: 1;
+}
+
+.workspace-card__icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-xl);
+  background: var(--bg-muted);
+  color: var(--accent-strong);
+  border: 1px solid var(--line);
+  transition: all 0.25s var(--ease-out);
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-card:hover .workspace-card__icon {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.workspace-card__content {
+  display: grid;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-card__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.workspace-card__desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-secondary);
+  line-height: 1.5;
+  max-width: 24ch;
+}
+
+.workspace-card__arrow {
+  margin-top: 0.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  color: var(--ink-muted);
+  transition: all 0.25s var(--ease-out);
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-card:hover .workspace-card__arrow {
+  background: var(--accent);
+  color: white;
+  transform: translateX(4px);
+}
+
+@media (max-width: 640px) {
+  .workspace-selector {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mode-picker__back {
+  position: absolute;
+  right: 0;
+  top: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-muted);
+  border: 1px solid var(--line);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  z-index: 10;
+}
+
+.mode-picker__back:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--line-strong);
+  color: var(--ink);
+  transform: translateX(2px);
 }
 
 .mode-templates__title {
@@ -837,26 +968,6 @@ img {
   flex-direction: column;
   gap: 0.75rem;
   width: 100%;
-}
-
-.mode-instructions__heading {
-  margin: 0;
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--accent);
-  padding: 0 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.mode-instructions__heading::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, color-mix(in srgb, var(--accent) 30%, transparent), transparent);
 }
 
 
@@ -3959,7 +4070,7 @@ html[data-theme="light"] .font-source-switch__btn.is-active {
 
 .mode-picker__back {
   position: absolute;
-  left: 0;
+  right: 0;
   width: 2.5rem;
   height: 2.5rem;
   display: grid;
@@ -3978,7 +4089,7 @@ html[data-theme="light"] .font-source-switch__btn.is-active {
   background: var(--bg-muted);
   color: var(--accent);
   border-color: var(--accent);
-  transform: translateX(-3px);
+  transform: translateX(3px);
   box-shadow: 0 0 15px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 

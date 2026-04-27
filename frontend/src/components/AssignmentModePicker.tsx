@@ -50,167 +50,215 @@ export function AssignmentModePicker({
               </svg>
             </button>
           )}
-          {showTemplates && (
-            <h1 id="mode-picker-title" className="mode-picker__title">
-              Download Templates
-            </h1>
-          )}
+          <h1 id="mode-picker-title" className="mode-picker__title" style={{ marginTop: '1rem' }}>
+            {!workspace ? "Choose your workspace" : 
+             showTemplates ? "Handwriting Templates" :
+             workspace === "font" ? "Make Your Own Font" : 
+             "What is your assignment?"}
+          </h1>
         </header>
 
         <section className="mode-picker__instructions" aria-label="Mode instructions">
-          {!showTemplates ? (
-            <div className="mode-instructions" role="group">
-              
-              <div className="mode-instructions__group">
-                <h2 className="mode-instructions__heading">Make Your own font</h2>
-                <div className="mode-instructions--triad">
-                  <button
-                    type="button"
-                    className="mode-instructions__item mode-instructions__item--font"
-                    onClick={() => onSelect("font-export")}
-                  >
-                    <div className="mode-instructions__icon mode-instructions__icon--font" aria-hidden>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          {!workspace ? (
+             <div className="workspace-selector">
+                <button 
+                  className="workspace-card"
+                  onClick={() => setWorkspace("font")}
+                >
+                   <div className="workspace-card__icon workspace-card__icon--font">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M4 7V4h16v3" />
                         <path d="M9 20h6" />
                         <path d="M12 4v16" />
                       </svg>
-                    </div>
-                    <div className="mode-instructions__text">
-                      <div className="mode-instructions__name">TrueType Font Export</div>
-                      <div className="mode-instructions__detail">Convert scans into a real .TTF font!</div>
-                    </div>
-                    <div className="mode-instructions__arrow">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                   </div>
+                   <div className="workspace-card__content">
+                      <h2 className="workspace-card__title">Make your Own font</h2>
+                      <p className="workspace-card__desc">Vectorize glyphs and export .TTF</p>
+                   </div>
+                   <div className="workspace-card__arrow">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
-                    </div>
-                    <div className="mode-instructions__badge" style={{ top: '1.25rem', right: '1.25rem' }}>NEW</div>
-                  </button>
+                   </div>
+                </button>
 
-                  <button
-                    type="button"
-                    className="mode-instructions__item mode-instructions__item--demo"
-                    onClick={() => onOpenDemo("font")}
-                  >
-                    <div className="mode-instructions__icon mode-instructions__icon--demo" aria-hidden>
-                      <div className="demo-pulse-ring" />
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
-                      </svg>
-                    </div>
-                    <div className="mode-instructions__text">
-                      <div className="mode-instructions__name">Demo Tour</div>
-                      <div className="mode-instructions__detail">Guided walkthrough of all features.</div>
-                    </div>
-                    <div className="mode-instructions__arrow">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div className="mode-instructions__group" style={{ marginTop: "0.5rem" }}>
-                <h2 className="mode-instructions__heading">What is your assignment?</h2>
-                <div className="mode-instructions--triad">
-                  <button
-                    type="button"
-                    className="mode-instructions__item mode-instructions__item--simple"
-                    onClick={() => onSelect("simple")}
-                  >
-                    <div className="mode-instructions__icon mode-instructions__icon--simple" aria-hidden>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <button 
+                  className="workspace-card"
+                  onClick={() => setWorkspace("notes")}
+                >
+                   <div className="workspace-card__icon workspace-card__icon--notes">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                       </svg>
-                    </div>
-                    <div className="mode-instructions__text">
-                      <div className="mode-instructions__name">Theory Notes</div>
-                      <div className="mode-instructions__detail">Essays, notes, and general handwriting. Upload alphabet datasets only.</div>
-                    </div>
-                    <div className="mode-instructions__arrow">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                   </div>
+                   <div className="workspace-card__content">
+                      <h2 className="workspace-card__title">Make Handwritten Notes</h2>
+                      <p className="workspace-card__desc">Theory and coding assignment modes</p>
+                   </div>
+                   <div className="workspace-card__arrow">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
-                    </div>
-                  </button>
+                   </div>
+                </button>
+             </div>
+          ) : !showTemplates ? (
+            <div className="mode-instructions" role="group">
+              
+              {workspace === "font" && (
+                <div className="mode-instructions__group">
+                  <div className="mode-instructions--triad">
+                    <button
+                      type="button"
+                      className="mode-instructions__item mode-instructions__item--font"
+                      onClick={() => onSelect("font-export")}
+                    >
+                      <div className="mode-instructions__icon mode-instructions__icon--font" aria-hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 7V4h16v3" />
+                          <path d="M9 20h6" />
+                          <path d="M12 4v16" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__text">
+                        <div className="mode-instructions__name">TrueType Font Export</div>
+                        <div className="mode-instructions__detail">Convert scans into a real .TTF font!</div>
+                      </div>
+                      <div className="mode-instructions__arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__badge" style={{ top: '1.25rem', right: '1.25rem' }}>NEW</div>
+                    </button>
 
-                  <button
-                    type="button"
-                    className="mode-instructions__item mode-instructions__item--coding"
-                    onClick={() => onSelect("coding")}
-                  >
-                    <div className="mode-instructions__icon mode-instructions__icon--coding" aria-hidden>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="16 18 22 12 16 6" />
-                        <polyline points="8 6 2 12 8 18" />
-                      </svg>
-                    </div>
-                    <div className="mode-instructions__text">
-                      <div className="mode-instructions__name">Coding Notes</div>
-                      <div className="mode-instructions__detail">Code with special characters. Upload alphabet & symbols.</div>
-                    </div>
-                    <div className="mode-instructions__arrow">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </button>
-
-                  <div className="mode-instructions__divider">
-                    <span>Help & Resources</span>
+                    <button
+                      type="button"
+                      className="mode-instructions__item mode-instructions__item--demo"
+                      onClick={() => onOpenDemo("font")}
+                    >
+                      <div className="mode-instructions__icon mode-instructions__icon--demo" aria-hidden>
+                        <div className="demo-pulse-ring" />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__text">
+                        <div className="mode-instructions__name">Demo Tour</div>
+                        <div className="mode-instructions__detail">Guided walkthrough of all features.</div>
+                      </div>
+                      <div className="mode-instructions__arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    className="mode-instructions__item mode-instructions__item--demo"
-                    onClick={() => onOpenDemo("standard")}
-                  >
-                    <div className="mode-instructions__icon mode-instructions__icon--demo" aria-hidden>
-                      <div className="demo-pulse-ring" />
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
-                      </svg>
-                    </div>
-                    <div className="mode-instructions__text">
-                      <div className="mode-instructions__name">Demo Tour</div>
-                      <div className="mode-instructions__detail">Guided walkthrough of all features.</div>
-                    </div>
-                    <div className="mode-instructions__arrow">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="mode-instructions__item mode-instructions__item--templates"
-                    onClick={() => setShowTemplates(true)}
-                  >
-                    <div className="mode-instructions__icon mode-instructions__icon--templates" aria-hidden>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                    </div>
-                    <div className="mode-instructions__text">
-                      <div className="mode-instructions__name">Templates</div>
-                      <div className="mode-instructions__detail">Get printable PDF handwriting grids.</div>
-                    </div>
-                    <div className="mode-instructions__arrow">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </button>
                 </div>
-              </div>
+              )}
+
+              {workspace === "notes" && (
+                <div className="mode-instructions__group" style={{ marginTop: "0.5rem" }}>
+                  <div className="mode-instructions--triad">
+                    <button
+                      type="button"
+                      className="mode-instructions__item mode-instructions__item--simple"
+                      onClick={() => onSelect("simple")}
+                    >
+                      <div className="mode-instructions__icon mode-instructions__icon--simple" aria-hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__text">
+                        <div className="mode-instructions__name">Theory Notes</div>
+                        <div className="mode-instructions__detail">Essays, notes, and general handwriting. Upload alphabet datasets only.</div>
+                      </div>
+                      <div className="mode-instructions__arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="mode-instructions__item mode-instructions__item--coding"
+                      onClick={() => onSelect("coding")}
+                    >
+                      <div className="mode-instructions__icon mode-instructions__icon--coding" aria-hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="16 18 22 12 16 6" />
+                          <polyline points="8 6 2 12 8 18" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__text">
+                        <div className="mode-instructions__name">Coding Notes</div>
+                        <div className="mode-instructions__detail">Code with special characters. Upload alphabet & symbols.</div>
+                      </div>
+                      <div className="mode-instructions__arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    <div className="mode-instructions__divider">
+                      <span>Help & Resources</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="mode-instructions__item mode-instructions__item--demo"
+                      onClick={() => onOpenDemo("standard")}
+                    >
+                      <div className="mode-instructions__icon mode-instructions__icon--demo" aria-hidden>
+                        <div className="demo-pulse-ring" />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__text">
+                        <div className="mode-instructions__name">Demo Tour</div>
+                        <div className="mode-instructions__detail">Guided walkthrough of all features.</div>
+                      </div>
+                      <div className="mode-instructions__arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="mode-instructions__item mode-instructions__item--templates"
+                      onClick={() => setShowTemplates(true)}
+                    >
+                      <div className="mode-instructions__icon mode-instructions__icon--templates" aria-hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__text">
+                        <div className="mode-instructions__name">Templates</div>
+                        <div className="mode-instructions__detail">Get printable PDF handwriting grids.</div>
+                      </div>
+                      <div className="mode-instructions__arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
 
             </div>
 

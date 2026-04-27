@@ -16,12 +16,16 @@ CODING_SYMBOL_DIR = PROJECT_DIR / "coding_symbol_samples"
 HANDWRITING_GRID_ROWS = 8
 HANDWRITING_GRID_COLS = 8
 
+FONT_GRID_ROWS = 7
+FONT_GRID_COLS = 8
+
 CODING_GRID_ROWS = 5
 CODING_GRID_COLS = 6
 MIN_COMPONENT_AREA = 6
 PRIMARY_COMPONENT_AREA = 50
 
 HANDWRITING_LABELS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.")
+FONT_LABELS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
 
 DEFAULT_CODING_SYMBOLS = [
     "!", "@", "#", "%", "^", "&",
@@ -303,17 +307,9 @@ def normalize_input_for_extraction(image):
     else:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Flatten lighting and paper tint - Optimized using downsampled background subtraction
-    softened = cv2.GaussianBlur(gray, (3, 3), 0)
-    
-    # Fast background estimation: resize down, blur, resize up
-    h, w = softened.shape[:2]
-    small_w, small_h = max(1, w // 8), max(1, h // 8)
-    small = cv2.resize(softened, (small_w, small_h), interpolation=cv2.INTER_AREA)
-    small_bg = cv2.GaussianBlur(small, (9, 9), 0)
-    background = cv2.resize(small_bg, (w, h), interpolation=cv2.INTER_LINEAR)
-    
-    background = np.maximum(background, 1)
+    # Flatten lighting and paper tint using a high-sigma Gaussian blur (stable but slower)
+    softened = cv2.GaussianBlur(gray, (5, 5), 0)
+    background = cv2.GaussianBlur(softened, (201, 201), 0)
     flattened = cv2.divide(softened, background, scale=255)
 
     # Keep this gentle so already-clean uploads do not get overprocessed.
@@ -418,8 +414,7 @@ def prepare_cells_for_normalization(ordered_cells, clean_symbols=True):
         h, w = prepared_roi.shape[:2]
         return (char, prepared_roi, w, h, row, col)
 
-    with ThreadPoolExecutor() as executor:
-        prepared = list(executor.map(process_item, ordered_cells))
+    prepared = [process_item(item) for item in ordered_cells]
 
     return prepared
 
@@ -727,18 +722,16 @@ def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT
     else:
         gray = image.copy()
 
-    # OPTIMIZATION: Detect on a smaller image for massive speedup
-    detection_scale = 1.0
-    if gray.shape[0] > 1280:
-        detection_scale = 1280.0 / gray.shape[0]
-        work_img = cv2.resize(gray, None, fx=detection_scale, fy=detection_scale, interpolation=cv2.INTER_AREA)
-    else:
-        work_img = gray
+    # Revert to full-resolution detection for maximum reliability
+    work_img = gray
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(dictionary_id)
     parameters = cv2.aruco.DetectorParameters()
-    parameters.adaptiveThreshWinSizeStep = 5 # Faster step
-    parameters.minMarkerPerimeterRate = 0.015 
+    parameters.adaptiveThreshWinSizeStep = 4 
+    parameters.adaptiveThreshWinSizeMin = 3
+    parameters.adaptiveThreshWinSizeMax = 25
+    parameters.minMarkerPerimeterRate = 0.01 
+    parameters.errorCorrectionRate = 0.8 # More forgiving
     
     detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
@@ -751,13 +744,8 @@ def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT
             ids = ids.flatten()
             for i, mid in enumerate(ids):
                 if mid in marker_ids and mid not in found_markers:
-                    # Map corners back to original high-res scale
-                    c = corners[i].reshape((4, 2)) / detection_scale
-                    
-                    # Refine corner on the ORIGINAL HIGH-RES image for precision
-                    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-                    refined = cv2.cornerSubPix(gray, c.astype(np.float32), (5, 5), (-1, -1), criteria)
-                    found_markers[mid] = refined
+                    # Refine corner on the ORIGINAL image
+                    found_markers[mid] = corners[i].reshape((4, 2))
                     print(f"Pass '{pass_name}': Found Marker {mid}")
         return rejected
 
@@ -766,6 +754,10 @@ def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT
         ("Standard", work_img),
         ("CLAHE", clahe.apply(work_img)),
         ("Contrast-Stretch", cv2.normalize(work_img, None, 0, 255, cv2.NORM_MINMAX)),
+        ("Denoise", cv2.medianBlur(work_img, 3)),
+        ("Blur", cv2.GaussianBlur(work_img, (3, 3), 0)),
+        ("Sharpen", cv2.filter2D(work_img, -1, np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]]))),
+        ("Adaptive-Thresh", cv2.adaptiveThreshold(work_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 10)),
     ]
 
     last_rejected = None
@@ -990,11 +982,14 @@ def extract_cells_uniform(
         
         return (char, roi, w, h, row, col)
 
+    results = []
     total_cells = grid_rows * grid_cols
-    with ThreadPoolExecutor() as executor:
-        results = list(executor.map(process_cell, range(total_cells)))
+    for i in range(total_cells):
+        res = process_cell(i)
+        if res is not None:
+            results.append(res)
 
-    return [r for r in results if r is not None]
+    return results
 
 
 def save_perspective_debug(

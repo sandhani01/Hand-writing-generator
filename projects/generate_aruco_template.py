@@ -118,7 +118,7 @@ if __name__ == "__main__":
     parser.add_argument("--cell_size", type=int, default=150, help="Size of each cell in pixels")
     parser.add_argument("--marker_size", type=int, default=100, help="Size of ArUco markers")
     parser.add_argument("--padding", type=int, default=100, help="Padding around the grid")
-    parser.add_argument("--mode", type=str, choices=["handwriting", "coding"], default="handwriting", help="Preset mode")
+    parser.add_argument("--mode", type=str, choices=["handwriting", "coding", "font"], default="handwriting", help="Preset mode")
     parser.add_argument("--color", action="store_true", help="Use Premium Color Mode (Technical Blue)")
     
     args = parser.parse_args()
@@ -126,6 +126,7 @@ if __name__ == "__main__":
     path = Path(args.output).resolve()
     
     handwriting_labels = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,.")
+    font_labels = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
     coding_labels = [
         "!", "@", "#", "%", "^", "&",
         "*", "(", ")", "-", "_", "=",
@@ -136,6 +137,10 @@ if __name__ == "__main__":
     
     if args.mode == "coding":
         generate_aruco_template(str(path), rows=5, cols=6, labels=coding_labels, 
+                                 cell_size=args.cell_size, marker_size=args.marker_size, 
+                                 use_color=args.color)
+    elif args.mode == "font":
+        generate_aruco_template(str(path), rows=7, cols=8, labels=font_labels, 
                                  cell_size=args.cell_size, marker_size=args.marker_size, 
                                  use_color=args.color)
     else:
