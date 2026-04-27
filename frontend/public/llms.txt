@@ -1,0 +1,20 @@
+# Handwritten Notes Generator
+
+An advanced AI-powered web application that transforms digital text and source code into realistic, natural-looking handwriting.
+
+## Key Features
+- **Theory Mode**: Convert regular notes into cursive or print handwriting.
+- **Coding Mode**: Specialized rendering for programming assignments with support for symbols.
+- **Font Generator**: Create installable .TTF and .WOFF fonts directly from your own handwriting samples.
+- **Vectorization**: High-quality contour tracing for smoother, sharper handwriting extraction.
+- **Session Isolation**: Dedicated workspaces for notes and font projects.
+
+## Tech Stack
+- **Frontend**: React, Vite, TypeScript.
+- **Backend**: FastAPI (Python), OpenCV, FontTools.
+- **Styling**: Vanilla CSS with a focus on premium aesthetics and dark mode.
+
+## Links
+- [Dashboard](https://handwritten-notes.app/)
+- [Font Generator](https://handwritten-notes.app/font-generator)
+- [How it Works](https://handwritten-notes.app/how-to)
