@@ -20,7 +20,7 @@ export function AssignmentGate({
 }: Omit<Props, "onLogout">) {
   return (
     <div className="app app--gate">
-      <a className="skip-link" href="#assignment-picker">
+      <a className="skip-link" href="#notes-picker">
         Skip to choices
       </a>
       <div className="gate-topbar">

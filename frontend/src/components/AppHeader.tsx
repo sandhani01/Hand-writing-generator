@@ -4,7 +4,7 @@ type Props = {
   isCodingMode: boolean;
   theme: "dark" | "light";
   onToggleTheme: () => void;
-  onChangeAssignmentType: () => void;
+  onChangeNoteType: () => void;
   onRefreshLibrary: () => void;
   onResetWorkspace: () => void;
   onRender: () => void;
@@ -18,7 +18,7 @@ export function AppHeader({
   isCodingMode,
   theme,
   onToggleTheme,
-  onChangeAssignmentType,
+  onChangeNoteType,
   onRefreshLibrary,
   onResetWorkspace,
   onRender,
@@ -99,8 +99,8 @@ export function AppHeader({
               <button
                 type="button"
                 className="btn btn--toolbar"
-                onClick={onChangeAssignmentType}
-                title="Back to mode selection"
+                onClick={onChangeNoteType}
+                title="Change Note Type"
               >
                 <svg className="btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m15 18-6-6 6-6" />

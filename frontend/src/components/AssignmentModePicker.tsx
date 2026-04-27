@@ -16,7 +16,7 @@ export function AssignmentModePicker({
 
   return (
     <div
-      id="assignment-picker"
+      id="notes-picker"
       className="mode-picker"
       role="dialog"
       aria-modal="true"
@@ -37,7 +37,7 @@ export function AssignmentModePicker({
             </button>
           )}
           <h1 id="mode-picker-title" className="mode-picker__title">
-            {showTemplates ? "Download Templates" : "What's Your Assignment?"}
+            {showTemplates ? "Download Templates" : "What's Your Note Type?"}
           </h1>
         </header>
 
@@ -60,7 +60,7 @@ export function AssignmentModePicker({
                   </svg>
                 </div>
                 <div className="mode-instructions__text">
-                  <div className="mode-instructions__name">Theory Assignments</div>
+                  <div className="mode-instructions__name">Theory Notes</div>
                   <div className="mode-instructions__detail">Essays, notes, and general handwriting. Upload alphabet datasets only.</div>
                 </div>
                 <div className="mode-instructions__arrow">
@@ -82,7 +82,7 @@ export function AssignmentModePicker({
                   </svg>
                 </div>
                 <div className="mode-instructions__text">
-                  <div className="mode-instructions__name">Coding Assignments</div>
+                  <div className="mode-instructions__name">Coding Notes</div>
                   <div className="mode-instructions__detail">Code with special characters. Upload both alphabet and coding symbol datasets.</div>
                 </div>
                 <div className="mode-instructions__arrow">
@@ -102,6 +102,7 @@ export function AssignmentModePicker({
                 onClick={onOpenDemo}
               >
                 <div className="mode-instructions__icon mode-instructions__icon--demo" aria-hidden>
+                   <div className="demo-pulse-ring" />
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />

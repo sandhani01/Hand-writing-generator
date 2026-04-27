@@ -229,7 +229,13 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
                 key={step.step}
                 ref={(el) => { stageRefs.current[index] = el; }}
                 className={`dtour-card ${isVisible ? "is-visible" : ""} ${isEven ? "dtour-card--left" : "dtour-card--right"}`}
-                style={step.accent}
+                style={{
+                  ...step.accent,
+                  transitionDelay: `${isVisible ? index * 0.1 : 0}s`,
+                  transform: isVisible ? "scale(1) translate(0)" : "scale(0.95) translateY(20px)",
+                  opacity: isVisible ? 1 : 0,
+                  transition: "all 0.6s cubic-bezier(0.22, 1, 0.36, 1)"
+                } as CSSProperties}
                 data-step-index={index}
                 aria-label={`Step ${step.step}: ${step.title}`}
               >
@@ -305,7 +311,7 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
           <div className="dtour-outro__badge" aria-hidden>✓</div>
           <h2 className="dtour-outro__title">You're all set!</h2>
           <p className="dtour-outro__text">
-            Head back, pick your assignment type, and create your first handwritten page.
+            Head back, pick your note type, and create your first handwritten page.
           </p>
           <button type="button" className="btn btn--primary dtour-outro__btn" onClick={() => onBack()}>
             Let's go →

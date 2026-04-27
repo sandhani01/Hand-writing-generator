@@ -835,14 +835,14 @@ export default function App() {
     });
   };
 
-  const selectAssignmentMode = (mode: AssignmentMode) => {
+  const selectNoteMode = (mode: AssignmentMode) => {
     setIsDemoOpen(false);
     setAssignmentMode(mode);
     setText(mode === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE);
     persistAssignmentMode(mode);
   };
 
-  const openAssignmentPicker = () => {
+  const openNotePicker = () => {
     setIsDemoOpen(false);
     setAssignmentMode(null);
     clearStoredAssignmentMode();
@@ -875,7 +875,7 @@ export default function App() {
           onBack={(options) => {
             setIsDemoOpen(false);
             if (options?.selectMode) {
-              selectAssignmentMode(options.selectMode);
+              selectNoteMode(options.selectMode);
               setFontSource("personal");
               if (options.highlightUpload) {
                 setHighlightUpload(true);
@@ -899,7 +899,7 @@ export default function App() {
       <AssignmentGate
         theme={theme}
         onToggleTheme={toggleTheme}
-        onSelectMode={selectAssignmentMode}
+        onSelectMode={selectNoteMode}
         onOpenDemo={() => {
           setInitialTemplatesView(false); // Reset when opening demo
           setIsDemoOpen(true);
@@ -919,7 +919,7 @@ export default function App() {
         isCodingMode={isCodingMode}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onChangeAssignmentType={openAssignmentPicker}
+        onChangeNoteType={openNotePicker}
         onRefreshLibrary={() =>
           void Promise.all([loadDatasets(), loadBackgrounds(), loadRenders()])
         }
