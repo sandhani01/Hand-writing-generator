@@ -185,48 +185,34 @@ def bitmap_to_contours(gray: np.ndarray, target_height: int = ASCENT) -> list[li
     """
     Convert a grayscale glyph image to a list of smoothed closed contours.
     """
-    # 1. Denoise and clean
-    # Remove small specks
+    # 1. Minimal Cleaning
     cleaned = cv2.medianBlur(gray, 3)
     
-    # Enhance contrast
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    cleaned = clahe.apply(cleaned)
-    
-    # 2. Thresholding: Use Otsu's to avoid hollow 'bubble' effects caused by adaptive thresholding
-    # We first invert so ink is 255, background is 0
+    # 2. Thresholding: Robust Otsu
     _, binary = cv2.threshold(cleaned, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    
-    # Check if inversion was too aggressive (if background is now 255)
     if np.sum(binary == 255) > np.sum(binary == 0):
         binary = cv2.bitwise_not(binary)
-
     if np.sum(binary) == 0:
         return []
 
-    # 3. Upscale for high-fidelity contouring
+    # 3. High-res Upscale WITHOUT blurring
+    # We use high resolution to allow the vectorizer to place points with sub-pixel precision.
     scale_factor = 4
-    # Use CUBIC for smoother edges
     upscaled = cv2.resize(
         binary,
         (binary.shape[1] * scale_factor, binary.shape[0] * scale_factor),
-        interpolation=cv2.INTER_CUBIC,
+        interpolation=cv2.INTER_NEAREST,
     )
 
-    # 4. Anti-aliasing and smoothing
-    # Bilateral filter preserves edges while smoothing geometry
-    upscaled = cv2.bilateralFilter(upscaled, 9, 75, 75)
-    _, final_binary = cv2.threshold(upscaled, 127, 255, cv2.THRESH_BINARY)
-
-    # 5. Extraction
+    # 4. Extraction with high fidelity
     contours, hierarchy = cv2.findContours(
-        final_binary, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
+        upscaled, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
     )
 
     if not contours:
         return []
 
-    img_h, img_w = final_binary.shape[:2]
+    img_h, img_w = upscaled.shape[:2]
     font_scale = target_height / max(img_h, 1)
     
     result = []
@@ -234,56 +220,43 @@ def bitmap_to_contours(gray: np.ndarray, target_height: int = ASCENT) -> list[li
         if len(contour) < 3:
             continue
 
-        # 6. Smooth the contour points before font unit conversion
-        # Use approxPolyDP with a tiny epsilon to keep organic shape
-        epsilon = 0.3 * scale_factor
+        # 5. Very Gentle Simplification
+        # We use a tiny epsilon to keep the exact shape, but just enough to remove redundant pixels.
+        epsilon = 0.12 * scale_factor 
         approx = cv2.approxPolyDP(contour, epsilon, True)
         
         if len(approx) < 3:
             continue
 
-        # Convert to list of coordinates
         points_raw = [(float(pt[0][0]), float(pt[0][1])) for pt in approx]
         
-        # Simple sliding window smoothing for micro-jitter
-        smoothed_points = []
+        # Simple rolling average to remove quantization noise (pixel steps)
         n_pts = len(points_raw)
-        if n_pts > 5:
+        smoothed_points = []
+        if n_pts > 4:
             for j in range(n_pts):
-                # 3-point average
-                p_prev = points_raw[(j - 1) % n_pts]
-                p_curr = points_raw[j]
-                p_next = points_raw[(j + 1) % n_pts]
+                p_m1 = points_raw[(j - 1) % n_pts]
+                p_0  = points_raw[j]
+                p_p1 = points_raw[(j + 1) % n_pts]
                 smoothed_points.append((
-                    (p_prev[0] + p_curr[0] + p_next[0]) / 3.0,
-                    (p_prev[1] + p_curr[1] + p_next[1]) / 3.0
+                    (p_m1[0] + 2*p_0[0] + p_p1[0]) / 4.0,
+                    (p_m1[1] + 2*p_0[1] + p_p1[1]) / 4.0
                 ))
         else:
             smoothed_points = points_raw
 
-        # 7. Coordinate Space Conversion
+        # 6. Coordinate Space Conversion
         font_points = []
         for px, py in smoothed_points:
             fx = int(round(px * font_scale))
-            # Adjust baseline vertical shift
-            # We want the 'ink' bottom to roughly touch baseline 0 (except for descenders)
-            fy = int(round((img_h - py) * font_scale - abs(DESCENT) * 0.1))
+            fy = int(round((img_h - py) * font_scale))
             font_points.append((fx, fy))
 
-        # 8. Winding for TrueType (y-up):
-        # Outer contours: Clockwise
-        # Inner contours (holes): Counter-clockwise
+        # 7. Winding Logic
         area = _signed_area(font_points)
         is_outer = (hierarchy is not None and hierarchy[0][i][3] == -1)
-        
-        if is_outer:
-            # Outer: make Clockwise (area < 0 in our _signed_area implementation)
-            if area > 0:
-                font_points.reverse()
-        else:
-            # Hole: make Counter-clockwise (area > 0)
-            if area < 0:
-                font_points.reverse()
+        if (is_outer and area > 0) or (not is_outer and area < 0):
+            font_points.reverse()
 
         result.append(font_points)
 
@@ -442,9 +415,12 @@ def build_font(
         for contour in contours:
             if len(contour) < 3:
                 continue
+            
+            # Use qCurveTo on the high-fidelity polyline.
+            # This creates a smooth quadratic spline that stays very close to the natural ink line.
             pen.moveTo(contour[0])
-            for pt in contour[1:]:
-                pen.lineTo(pt)
+            if len(contour) > 1:
+                pen.qCurveTo(*contour[1:])
             pen.closePath()
 
         try:

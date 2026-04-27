@@ -290,8 +290,10 @@ def apply_post_threshold_cleanup(binary, skip_open=False):
     if skip_open:
         return binary
 
+    # Use a smaller kernel to preserve detail while removing noise
     kernel = np.ones((2, 2), np.uint8)
-    return cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    opened = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    return opened
 
 
 def normalize_input_for_extraction(image):

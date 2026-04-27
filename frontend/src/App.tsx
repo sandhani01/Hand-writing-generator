@@ -125,7 +125,7 @@ export default function App() {
   const [busyRenderId, setBusyRenderId] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [fontSource, setFontSource] = useState<"personal" | "default">("personal");
+  const [fontSource, setFontSource] = useState<"personal" | "default">("default");
   const [defaultFonts, setDefaultFonts] = useState<string[]>([]);
   const [selectedDefaultFont, setSelectedDefaultFont] = useState<string>("");
   const workspaceBootKeyRef = useRef<string | null>(null);
@@ -925,7 +925,7 @@ export default function App() {
             setIsDemoOpen(false);
             if (options?.selectMode) {
               selectNoteMode(options.selectMode);
-              setFontSource("personal");
+              setFontSource("default");
               if (options.highlightUpload) {
                 setHighlightUpload(true);
                 setTimeout(() => setHighlightUpload(false), 5000);
