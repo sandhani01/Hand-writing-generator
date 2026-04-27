@@ -3,6 +3,7 @@ import { ThemeToggle } from "./ThemeToggle";
 
 type Props = {
   theme: "dark" | "light";
+  variant?: "standard" | "font";
   onToggleTheme: () => void;
   onBack: (options?: { navigateToTemplates?: boolean; selectMode?: "simple" | "coding"; highlightUpload?: boolean }) => void;
 };
@@ -19,7 +20,8 @@ type DemoStep = {
   actionLabel?: string;
 };
 
-const DEMO_STEPS: DemoStep[] = [
+const STANDARD_STEPS: DemoStep[] = [
+  /* ... (I'll keep the current steps here but rename them) ... */
   {
     step: "01",
     title: "Print Your Grid [Color Print]",
@@ -147,10 +149,98 @@ const DEMO_STEPS: DemoStep[] = [
   },
 ];
 
-export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
+const FONT_DEMO_STEPS: DemoStep[] = [
+  {
+    step: "01",
+    title: "Upload Handwriting Grid",
+    subtitle: "Alphabet & Symbols",
+    imagePath: "/demo/font-01.png",
+    imageAlt: "Uploading a grid for font generation",
+    description:
+      "Select the high-precision font workspace. Upload your filled handwriting grids — we support both alphabet and symbol sheets for a complete character set.",
+    accent: {
+      "--step-accent": "#4ade80",
+      "--step-accent-dim": "rgba(74, 222, 128, 0.12)",
+      "--step-glow": "rgba(74, 222, 128, 0.06)",
+    } as CSSProperties,
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 7V4h16v3" />
+        <path d="M9 20h6" />
+        <path d="M12 4v16" />
+      </svg>
+    ),
+  },
+  {
+    step: "02",
+    title: "Vector Extraction",
+    subtitle: "Bezier Curve Fitting",
+    imagePath: "/demo/font-02.png",
+    imageAlt: "Vectorization process visualization",
+    description:
+      "Our engine extracts each glyph and converts it into smooth vector paths. This ensures your font stays sharp at any scale, unlike pixel-based notes.",
+    accent: {
+      "--step-accent": "#3b82f6",
+      "--step-accent-dim": "rgba(59, 130, 246, 0.12)",
+      "--step-glow": "rgba(59, 130, 246, 0.06)",
+    } as CSSProperties,
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+      </svg>
+    ),
+  },
+  {
+    step: "03",
+    title: "Metric Tuning",
+    subtitle: "Baselines & Spacing",
+    imagePath: "/demo/font-03.png",
+    imageAlt: "Font metrics adjustment UI",
+    description:
+      "Fine-tune the height, descent, and side-bearings of your glyphs. Adjusting these parameters makes your handwritten font look professional and natural.",
+    accent: {
+      "--step-accent": "#f59e0b",
+      "--step-accent-dim": "rgba(245, 158, 11, 0.12)",
+      "--step-glow": "rgba(245, 158, 11, 0.06)",
+    } as CSSProperties,
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 7V4h16v3" />
+        <path d="M9 20h6" />
+        <path d="M12 4v16" />
+      </svg>
+    ),
+  },
+  {
+    step: "04",
+    title: "Export .TTF Font",
+    subtitle: "Install anywhere",
+    imagePath: "/demo/font-04.png",
+    imageAlt: "TrueType font file icon",
+    description:
+      "Export your creation as a standard TrueType Font (.TTF). Install it on Windows, macOS, or use it on your website as a custom webfont!",
+    accent: {
+      "--step-accent": "#ec4899",
+      "--step-accent-dim": "rgba(236, 72, 153, 0.12)",
+      "--step-glow": "rgba(236, 72, 153, 0.06)",
+    } as CSSProperties,
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    ),
+  },
+];
+
+export function DemoTour({ theme, variant = "standard", onToggleTheme, onBack }: Props) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [visibleSteps, setVisibleSteps] = useState<Set<number>>(new Set());
   const stageRefs = useRef<(HTMLElement | null)[]>([]);
+
+  const steps = variant === "font" ? FONT_DEMO_STEPS : STANDARD_STEPS;
+  const isFont = variant === "font";
 
   /* Intersection-observer: reveal cards as they scroll into view */
   useEffect(() => {
@@ -168,7 +258,7 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
 
     stageRefs.current.forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [variant]);
 
   return (
     <div className="app app--gate app--demo">
@@ -192,13 +282,18 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
         {/* ── Hero ── */}
         <header className="dtour-hero">
           <div className="dtour-hero__glow" aria-hidden />
-          <span className="dtour-hero__eyebrow">Getting Started</span>
+          <span className="dtour-hero__eyebrow">
+            {isFont ? "Vector Workspace" : "Getting Started"}
+          </span>
           <h1 id="demo-tour-title" className="dtour-hero__title">
-            How It Works
+            {isFont ? "Build Your Font" : "How It Works"}
           </h1>
           <p className="dtour-hero__lede">
-            Six simple steps to turn your handwriting into a digital font.
-            Scroll down to explore every stage of the process.
+            {isFont 
+              ? "Four steps to convert your handwriting into a professional-grade TrueType font."
+              : "Six simple steps to turn your handwriting into digital notes." 
+            }
+            Scroll down to explore the {variant} process.
           </p>
           <div className="dtour-hero__cta">
             <button
@@ -220,7 +315,7 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
         <div className="dtour-timeline" aria-label="Demo steps timeline">
           <div className="dtour-timeline__rail" aria-hidden />
 
-          {DEMO_STEPS.map((step, index) => {
+          {steps.map((step, index) => {
             const isVisible = visibleSteps.has(index);
             const isEven = index % 2 === 0;
 
@@ -311,7 +406,10 @@ export function DemoTour({ theme, onToggleTheme, onBack }: Props) {
           <div className="dtour-outro__badge" aria-hidden>✓</div>
           <h2 className="dtour-outro__title">You're all set!</h2>
           <p className="dtour-outro__text">
-            Head back, pick your note type, and create your first handwritten page.
+            {isFont 
+              ? "Head back, upload your sheets, and export your personal .TTF font."
+              : "Head back, pick your note type, and create your first handwritten page."
+            }
           </p>
           <button type="button" className="btn btn--primary dtour-outro__btn" onClick={() => onBack()}>
             Let's go →

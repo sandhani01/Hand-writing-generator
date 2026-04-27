@@ -829,14 +829,14 @@ img {
   grid-template-rows: auto;
   align-content: start;
   gap: 0.85rem;
-  max-width: 680px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .mode-instructions__group {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  width: 100%;
 }
 
 .mode-instructions__heading {

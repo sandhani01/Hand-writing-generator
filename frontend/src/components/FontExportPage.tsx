@@ -32,10 +32,6 @@ export function FontExportPage({
     [datasets]
   );
 
-  const symbolDatasets = useMemo(
-    () => datasets.filter((d) => d.dataset_type === "coding"),
-    [datasets]
-  );
   
   const hasCompletedDataset = datasets.some((d) => d.status === "completed");
 
@@ -61,13 +57,13 @@ export function FontExportPage({
               </svg>
             </div>
             <div>
-              <h2 className="font-export-card__name">Step 1: Upload Handwriting Samples</h2>
-              <p className="font-export-card__desc">For a complete font, upload both the alphabet and symbol grids.</p>
+              <h2 className="font-export-card__name">Step 1: Upload Handwriting Scan</h2>
+              <p className="font-export-card__desc">Upload your completed alphabet grid to generate your personal font.</p>
             </div>
           </div>
 
           <div className="font-export-card__upload-grid">
-            <label htmlFor="alphabet-upload" className="upload-tile upload-tile--featured">
+            <label htmlFor="alphabet-upload" className="upload-tile upload-tile--featured" style={{ gridColumn: '1 / -1' }}>
               <div className="upload-tile__header">
                 <span className="upload-tile__icon" aria-hidden="true">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -85,26 +81,6 @@ export function FontExportPage({
                 type="file"
                 accept="image/*"
                 onChange={(e) => onUpload(e, "alphabet")}
-                disabled={isUploading}
-              />
-            </label>
-
-            <label htmlFor="symbol-upload" className="upload-tile upload-tile--featured upload-tile--secondary">
-              <div className="upload-tile__header">
-                <span className="upload-tile__icon upload-tile__icon--coding" aria-hidden="true">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="16 18 22 12 16 6" />
-                    <polyline points="8 6 2 12 8 18" />
-                  </svg>
-                </span>
-                <span className="upload-tile__title">Symbols Grid (6x5)</span>
-              </div>
-              <span className="upload-tile__hint">Special symbols, math operators, and brackets</span>
-              <input
-                id="symbol-upload"
-                type="file"
-                accept="image/*"
-                onChange={(e) => onUpload(e, "coding")}
                 disabled={isUploading}
               />
             </label>
@@ -187,28 +163,6 @@ export function FontExportPage({
               </div>
             )}
 
-            {symbolDatasets.length > 0 && (
-              <div className="font-export-library__group">
-                <h4 className="font-export-library__group-title">Symbol Grids</h4>
-                <div className="dataset-card-grid">
-                  {symbolDatasets.map((d) => (
-                    <div key={d.id} className="dataset-card">
-                      <div className="dataset-card__header">
-                        <span className={`status-badge status-badge--${d.status}`}>{d.status}</span>
-                      </div>
-                      <h4 className="dataset-card__title">{d.display_name}</h4>
-                      <button 
-                        className="btn btn--ghost btn--mini btn--danger"
-                        disabled={busyDatasetId === d.id}
-                        onClick={() => onDeleteDataset(d.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </section>
         )}
       </main>

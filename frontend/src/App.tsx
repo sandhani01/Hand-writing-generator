@@ -106,6 +106,7 @@ export default function App() {
     return mode === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE;
   });
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const [demoVariant, setDemoVariant] = useState<"standard" | "font">("standard");
   const [initialTemplatesView, setInitialTemplatesView] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
@@ -920,6 +921,7 @@ export default function App() {
       return (
         <DemoTour
           theme={theme}
+          variant={demoVariant}
           onToggleTheme={toggleTheme}
           onBack={(options) => {
             setIsDemoOpen(false);
@@ -949,8 +951,9 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onSelectMode={selectNoteMode}
-        onOpenDemo={() => {
-          setInitialTemplatesView(false); // Reset when opening demo
+        onOpenDemo={(variant) => {
+          setInitialTemplatesView(false);
+          setDemoVariant(variant ?? "standard");
           setIsDemoOpen(true);
         }}
         initialTemplatesView={initialTemplatesView}
