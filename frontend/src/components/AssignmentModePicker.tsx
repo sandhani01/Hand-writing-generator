@@ -12,7 +12,15 @@ export function AssignmentModePicker({
   onOpenDemo,
   initialTemplatesView = false,
 }: Props) {
+  const [workspace, setWorkspace] = useState<"font" | "notes" | null>(null);
   const [showTemplates, setShowTemplates] = useState(initialTemplatesView);
+
+  // If templates view was initially requested, jump to notes workspace
+  useState(() => {
+    if (initialTemplatesView) {
+      setWorkspace("notes");
+    }
+  });
 
   return (
     <div
@@ -25,11 +33,17 @@ export function AssignmentModePicker({
     >
       <div className="mode-picker__inner">
         <header className="mode-picker__header">
-          {showTemplates && (
+          {(showTemplates || workspace) && (
             <button
               className="mode-picker__back"
-              onClick={() => setShowTemplates(false)}
-              aria-label="Back to modes"
+              onClick={() => {
+                if (showTemplates) {
+                  setShowTemplates(false);
+                } else {
+                  setWorkspace(null);
+                }
+              }}
+              aria-label="Back"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 12H5M12 19l-7-7 7-7" />

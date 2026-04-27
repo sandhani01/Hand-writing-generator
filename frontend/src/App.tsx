@@ -951,7 +951,7 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onSelectMode={selectNoteMode}
-        onOpenDemo={(variant) => {
+        onOpenDemo={(variant: "standard" | "font" | undefined) => {
           setInitialTemplatesView(false);
           setDemoVariant(variant ?? "standard");
           setIsDemoOpen(true);

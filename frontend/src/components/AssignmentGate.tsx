@@ -6,7 +6,7 @@ type Props = {
   theme: "dark" | "light";
   onToggleTheme: () => void;
   onSelectMode: (mode: AssignmentMode) => void;
-  onOpenDemo: () => void;
+  onOpenDemo: (variant?: "standard" | "font") => void;
   onLogout: () => void;
   initialTemplatesView?: boolean;
 };

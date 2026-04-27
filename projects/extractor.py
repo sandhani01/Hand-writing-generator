@@ -5,6 +5,7 @@ from pathlib import Path
 import cv2
 import cv2.aruco
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 
 PROJECT_DIR = Path(__file__).resolve().parent
 DEFAULT_IMAGE_DIR = PROJECT_DIR / "handwriting_samples"
@@ -302,9 +303,16 @@ def normalize_input_for_extraction(image):
     else:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Flatten lighting and paper tint so phone photos behave more like a scan.
+    # Flatten lighting and paper tint - Optimized using downsampled background subtraction
     softened = cv2.GaussianBlur(gray, (3, 3), 0)
-    background = cv2.GaussianBlur(softened, (0, 0), sigmaX=27, sigmaY=27)
+    
+    # Fast background estimation: resize down, blur, resize up
+    h, w = softened.shape[:2]
+    small_w, small_h = max(1, w // 8), max(1, h // 8)
+    small = cv2.resize(softened, (small_w, small_h), interpolation=cv2.INTER_AREA)
+    small_bg = cv2.GaussianBlur(small, (9, 9), 0)
+    background = cv2.resize(small_bg, (w, h), interpolation=cv2.INTER_LINEAR)
+    
     background = np.maximum(background, 1)
     flattened = cv2.divide(softened, background, scale=255)
 
@@ -393,9 +401,8 @@ def compute_group_reference_heights(ordered_cells):
 
 
 def prepare_cells_for_normalization(ordered_cells, clean_symbols=True):
-    prepared = []
-
-    for char, roi, _, _, row, col in ordered_cells:
+    def process_item(item):
+        char, roi, _, _, row, col = item
         group = glyph_group(char)
         
         # 1. Edge-shaving: Catch slivers right at the cell boundary.
@@ -409,7 +416,10 @@ def prepare_cells_for_normalization(ordered_cells, clean_symbols=True):
         prepared_roi = crop_to_content(prepared_roi, pad=2)
 
         h, w = prepared_roi.shape[:2]
-        prepared.append((char, prepared_roi, w, h, row, col))
+        return (char, prepared_roi, w, h, row, col)
+
+    with ThreadPoolExecutor() as executor:
+        prepared = list(executor.map(process_item, ordered_cells))
 
     return prepared
 
@@ -711,26 +721,28 @@ def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT
     """
     Find the grid border using 4 ArUco markers at the corners.
     Accumulates successfully detected markers across multiple image processing passes.
-    If only 3 markers are found, it estimates the 4th marker's position geometrically.
     """
     if image.ndim == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray = image.copy()
 
+    # OPTIMIZATION: Detect on a smaller image for massive speedup
+    detection_scale = 1.0
+    if gray.shape[0] > 1280:
+        detection_scale = 1280.0 / gray.shape[0]
+        work_img = cv2.resize(gray, None, fx=detection_scale, fy=detection_scale, interpolation=cv2.INTER_AREA)
+    else:
+        work_img = gray
+
     aruco_dict = cv2.aruco.getPredefinedDictionary(dictionary_id)
-    
-    # 1. Setup Detector and Parameters
     parameters = cv2.aruco.DetectorParameters()
-    parameters.adaptiveThreshWinSizeStep = 3 # Finer step for robust discovery
-    parameters.minDistanceToBorder = 0
-    parameters.minMarkerPerimeterRate = 0.01 # Allow smaller markers in frame
+    parameters.adaptiveThreshWinSizeStep = 5 # Faster step
+    parameters.minMarkerPerimeterRate = 0.015 
     
     detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
-    # 2. Sequential Discovery across multiple passes
     found_markers = {} # marker_id -> corners (4, 2)
-    
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     
     def try_detect(img, pass_name):
@@ -739,21 +751,21 @@ def find_grid_aruco(image, marker_ids=(0, 1, 2, 3), dictionary_id=cv2.aruco.DICT
             ids = ids.flatten()
             for i, mid in enumerate(ids):
                 if mid in marker_ids and mid not in found_markers:
-                    # Refine corner to sub-pixel accuracy
-                    c = corners[i].reshape((4, 2))
+                    # Map corners back to original high-res scale
+                    c = corners[i].reshape((4, 2)) / detection_scale
+                    
+                    # Refine corner on the ORIGINAL HIGH-RES image for precision
                     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
                     refined = cv2.cornerSubPix(gray, c.astype(np.float32), (5, 5), (-1, -1), criteria)
                     found_markers[mid] = refined
                     print(f"Pass '{pass_name}': Found Marker {mid}")
         return rejected
 
-    # Standard set of image enhancement passes
+    # Optimized set of fast passes
     passes = [
-        ("Standard", gray),
-        ("CLAHE", clahe.apply(gray)),
-        ("Denoised", cv2.fastNlMeansDenoising(gray, None, 10, 7, 21)),
-        ("Blurred", cv2.GaussianBlur(gray, (5, 5), 0)),
-        ("Contrast-Stretch", cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)),
+        ("Standard", work_img),
+        ("CLAHE", clahe.apply(work_img)),
+        ("Contrast-Stretch", cv2.normalize(work_img, None, 0, 255, cv2.NORM_MINMAX)),
     ]
 
     last_rejected = None
@@ -941,47 +953,48 @@ def extract_cells_uniform(
     pad=4,
 ):
     """Divide the rectified binary image into uniform grid cells and extract content."""
-
     height, width = binary.shape[:2]
     cell_w = width / float(grid_cols)
     cell_h = height / float(grid_rows)
 
-    ordered = []
+    def process_cell(label_index):
+        row = label_index // grid_cols
+        col = label_index % grid_cols
+        
+        if label_index >= len(labels):
+            return None
 
-    for row in range(grid_rows):
-        for col in range(grid_cols):
-            label_index = row * grid_cols + col
-            if label_index >= len(labels):
-                break
+        char = labels[label_index]
+        if char == "":
+            return None
 
-            char = labels[label_index]
-            if char == "":
-                continue
+        x1 = int(round(col * cell_w))
+        x2 = int(round((col + 1) * cell_w))
+        y1 = int(round(row * cell_h))
+        y2 = int(round((row + 1) * cell_h))
 
-            x1 = int(round(col * cell_w))
-            x2 = int(round((col + 1) * cell_w))
-            y1 = int(round(row * cell_h))
-            y2 = int(round((row + 1) * cell_h))
+        inset_x = int(round((x2 - x1) * inset_ratio))
+        inset_y = int(round((y2 - y1) * inset_ratio))
 
-            inset_x = int(round((x2 - x1) * inset_ratio))
-            inset_y = int(round((y2 - y1) * inset_ratio))
+        roi_x1 = min(x2 - 1, x1 + inset_x)
+        roi_x2 = max(roi_x1 + 1, x2 - inset_x)
+        roi_y1 = min(y2 - 1, y1 + inset_y)
+        roi_y2 = max(roi_y1 + 1, y2 - inset_y)
 
-            roi_x1 = min(x2 - 1, x1 + inset_x)
-            roi_x2 = max(roi_x1 + 1, x2 - inset_x)
-            roi_y1 = min(y2 - 1, y1 + inset_y)
-            roi_y2 = max(roi_y1 + 1, y2 - inset_y)
+        roi = binary[roi_y1:roi_y2, roi_x1:roi_x2]
+        roi = crop_to_content(roi, pad=pad)
+        h, w = roi.shape[:2]
 
-            roi = binary[roi_y1:roi_y2, roi_x1:roi_x2]
-            roi = crop_to_content(roi, pad=pad)
-            h, w = roi.shape[:2]
+        if h < 2 or w < 2:
+            return (char, np.zeros((16, 16), dtype=np.uint8), 16, 16, row, col)
+        
+        return (char, roi, w, h, row, col)
 
-            if h < 2 or w < 2:
-                roi = np.zeros((16, 16), dtype=np.uint8)
-                ordered.append((char, roi, 16, 16, row, col))
-            else:
-                ordered.append((char, roi, w, h, row, col))
+    total_cells = grid_rows * grid_cols
+    with ThreadPoolExecutor() as executor:
+        results = list(executor.map(process_cell, range(total_cells)))
 
-    return ordered
+    return [r for r in results if r is not None]
 
 
 def save_perspective_debug(
