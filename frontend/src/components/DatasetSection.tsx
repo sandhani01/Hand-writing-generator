@@ -306,8 +306,9 @@ export function DatasetSection({
       <article id="dataset-section" className="surface surface--raised">
         <WorkflowSection
           step="03"
-          title="Handwriting Styles (Default)"
+          title="Default Fonts"
           subtitle="Select a pre-installed font package."
+          headingTag="h1"
         >
           {defaultFonts.length === 0 ? (
             <div className="dataset-empty">
@@ -381,10 +382,11 @@ export function DatasetSection({
     <article id="dataset-section" className="surface surface--raised">
       <WorkflowSection
         step="03"
-        title="Handwriting Styles"
+        title="Personal Fonts"
         subtitle={
           isCodingMode ? "More Datasets -> More Human-Written !!!" : "More Datasets -> More Human-Written !!!"
         }
+        headingTag="h1"
       >
         <div className="library-metrics library-metrics--wide" role="group" aria-label="Dataset quotas">
           <div className="metric-pill metric-pill--accent">

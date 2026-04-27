@@ -1,8 +1,9 @@
 export type UploadType = "alphabet" | "coding";
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
-/** Simple = alphabet datasets only in UI. Coding = alphabet + coding datasets. */
-export type AssignmentMode = "simple" | "coding";
+/** Simple = alphabet datasets only in UI. Coding = alphabet + coding datasets. Font-Export = specialized font generator. */
+export type AssignmentMode = "simple" | "coding" | "font-export";
+
 
 export type RenderOptions = {
   lineHeight: number;

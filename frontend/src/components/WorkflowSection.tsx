@@ -7,6 +7,7 @@ type Props = {
   children: ReactNode;
   className?: string;
   headerExtra?: ReactNode;
+  headingTag?: "h1" | "h2";
 };
 
 export function WorkflowSection({
@@ -16,8 +17,10 @@ export function WorkflowSection({
   children,
   className = "",
   headerExtra,
+  headingTag = "h2",
 }: Props) {
   const id = `workflow-step-${step.replace(/\s/g, "-")}-title`;
+  const Heading = headingTag;
   return (
     <section
       className={`workflow-section ${className}`.trim()}
@@ -29,9 +32,9 @@ export function WorkflowSection({
             {step}
           </span>
           <div className="workflow-section__titles">
-            <h2 id={id} className="workflow-section__title">
+            <Heading id={id} className="workflow-section__title">
               {title}
-            </h2>
+            </Heading>
             {subtitle ? (
               <p className="workflow-section__subtitle">{subtitle}</p>
             ) : null}

@@ -145,10 +145,33 @@ export function AssignmentModePicker({
                 </div>
               </button>
 
+              <button
+                type="button"
+                className="mode-instructions__item mode-instructions__item--font"
+                onClick={() => onSelect("font-export")}
+              >
 
-
+                <div className="mode-instructions__icon mode-instructions__icon--font" aria-hidden>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 7V4h16v3" />
+                    <path d="M9 20h6" />
+                    <path d="M12 4v16" />
+                  </svg>
+                </div>
+                <div className="mode-instructions__text">
+                  <div className="mode-instructions__name">TrueType Font Export</div>
+                  <div className="mode-instructions__detail">Convert your scans into a real .TTF font! Vectorized with high precision for external use.</div>
+                </div>
+                <div className="mode-instructions__arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+                <div className="mode-instructions__badge">NEW</div>
+              </button>
 
             </div>
+
           ) : (
             <div className="mode-examples" aria-label="Example grids preview" style={{ marginTop: 0 }}>
               <div className="mode-example" aria-label="Example alphabet grid preview">

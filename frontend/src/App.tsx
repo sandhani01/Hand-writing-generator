@@ -12,6 +12,7 @@ import { DatasetSection } from "./components/DatasetSection";
 import { DemoTour } from "./components/DemoTour";
 import { PreviewSection } from "./components/PreviewSection";
 import { TuningSection } from "./components/TuningSection";
+import { FontExportPage } from "./components/FontExportPage";
 import { ImportConfigModal } from "./components/ImportConfigModal";
 import { useTheme } from "./useTheme";
 import {
@@ -62,9 +63,24 @@ function downloadBlob(blob: Blob, filename: string) {
 export default function App() {
 
   const authToken = "anonymous-token";
-  const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(
-    null
+  const [assignmentMode, setAssignmentMode] = useState<AssignmentMode | null>(
+    () => readStoredAssignmentMode()
   );
+
+  const [mainSessionId, setMainSessionId] = useState<string | null>(null);
+  const [fontExportSessionId, setFontExportSessionId] = useState<string | null>(null);
+
+  const workspaceSessionId = useMemo(() => {
+    return assignmentMode === "font-export" ? fontExportSessionId : mainSessionId;
+  }, [assignmentMode, fontExportSessionId, mainSessionId]);
+
+  const setWorkspaceSessionId = useCallback((id: string | null) => {
+    if (assignmentMode === "font-export") {
+      setFontExportSessionId(id);
+    } else {
+      setMainSessionId(id);
+    }
+  }, [assignmentMode]);
 
   const createWorkspaceSessionId = () => {
     return `ws_${Math.random()
@@ -89,9 +105,6 @@ export default function App() {
     const mode = readStoredAssignmentMode();
     return mode === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE;
   });
-  const [assignmentMode, setAssignmentMode] = useState<AssignmentMode | null>(
-    () => readStoredAssignmentMode()
-  );
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [initialTemplatesView, setInitialTemplatesView] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -374,7 +387,7 @@ export default function App() {
     void bootWorkspace();
     return () => {
     };
-  }, [authToken, loadBackgrounds, loadDatasets, loadRenders, workspaceSessionId]);
+  }, [authToken, createWorkspaceSessionId, loadBackgrounds, loadDatasets, loadRenders, setWorkspaceSessionId, workspaceSessionId]);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -668,6 +681,39 @@ export default function App() {
     }
   };
 
+  const [isExportingFont, setIsExportingFont] = useState(false);
+  const [fontExportError, setFontExportError] = useState<string | null>(null);
+
+  const handleExportFont = async (format: "ttf" | "woff" = "ttf") => {
+    if (!authToken || !workspaceSessionId) {
+      return;
+    }
+
+    setIsExportingFont(true);
+    setFontExportError(null);
+
+    try {
+      const blob = await apiClient.blob("/api/v1/fonts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fontName: "My Handwriting",
+          format,
+        }),
+        authToken,
+        workspaceSessionId,
+      });
+      const ext = format === "woff" ? "woff" : "ttf";
+      downloadBlob(blob, `My_Handwriting.${ext}`);
+    } catch (error) {
+      setFontExportError(
+        getErrorMessage(error, "Font export failed.")
+      );
+    } finally {
+      setIsExportingFont(false);
+    }
+  };
+
   const setCharacterOverride = (
     char: string,
     key: CharacterOverrideKey,
@@ -840,6 +886,9 @@ export default function App() {
     setAssignmentMode(mode);
     setText(mode === "coding" ? DEFAULT_TEXT_CODING : DEFAULT_TEXT_SIMPLE);
     persistAssignmentMode(mode);
+    
+    // If switching to a mode that doesn't have a session ID yet, 
+    // it will be initialized by the boot effect.
   };
 
   const openNotePicker = () => {
@@ -905,6 +954,23 @@ export default function App() {
           setIsDemoOpen(true);
         }}
         initialTemplatesView={initialTemplatesView}
+      />
+    );
+  }
+
+  if (assignmentMode === "font-export") {
+    return (
+      <FontExportPage
+        datasets={datasets}
+        isUploading={isUploading}
+        uploadError={uploadError}
+        isExportingFont={isExportingFont}
+        fontExportError={fontExportError}
+        onUpload={handleUpload}
+        onExportFont={handleExportFont}
+        onBack={openNotePicker}
+        onDeleteDataset={handleDeleteDataset}
+        busyDatasetId={busyDatasetId}
       />
     );
   }

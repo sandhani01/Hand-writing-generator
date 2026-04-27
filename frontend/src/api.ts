@@ -153,5 +153,5 @@ export const apiClient = {
     }),
 
   blob: (path: string, options?: RequestOptions) =>
-    apiBlobFetch(path, { ...options, method: "GET" }),
+    apiBlobFetch(path, { method: "GET", ...options }),
 };

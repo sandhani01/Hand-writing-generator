@@ -130,6 +130,7 @@ export function PreviewSection({
             </div>
           ) : null}
 
+
           <section className="history-panel">
             <div className="history-panel__header">
               <div>

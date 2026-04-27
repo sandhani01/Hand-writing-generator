@@ -85,9 +85,9 @@ export function AppHeader({
                   <path d="M16 16h5v5" />
                 </svg>
               </button>
-              <button 
-                type="button" 
-                className="btn btn--toolbar" 
+              <button
+                type="button"
+                className="btn btn--toolbar"
                 onClick={onResetWorkspace}
                 title="Reset workspace"
               >
