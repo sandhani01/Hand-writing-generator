@@ -129,4 +129,5 @@ class DefaultsResponse(BaseModel):
 class FontGenerateRequest(BaseModel):
     fontName: str = Field(default="My Handwriting")
     format: str = Field(default="ttf")  # ttf or woff
+    metrics: dict[str, float] = Field(default_factory=dict)
 

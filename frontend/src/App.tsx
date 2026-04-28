@@ -13,6 +13,7 @@ import { DemoTour } from "./components/DemoTour";
 import { PreviewSection } from "./components/PreviewSection";
 import { TuningSection } from "./components/TuningSection";
 import { FontExportPage } from "./components/FontExportPage";
+import { SamplesPage } from "./components/SamplesPage";
 import { ImportConfigModal } from "./components/ImportConfigModal";
 import { useTheme } from "./useTheme";
 import {
@@ -970,6 +971,14 @@ export default function App() {
           setIsDemoOpen(true);
         }}
         initialTemplatesView={initialTemplatesView}
+      />
+    );
+  }
+
+  if (assignmentMode === "samples") {
+    return (
+      <SamplesPage
+        onBack={openNotePicker}
       />
     );
   }

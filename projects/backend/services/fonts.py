@@ -16,6 +16,7 @@ def generate_font_response(
     workspace_session_id: str,
     font_name: str = "My Handwriting",
     fmt: str = "ttf",
+    metrics: dict[str, float] | None = None,
 ) -> FileResponse:
     datasets = list_completed_datasets(user_id, workspace_session_id)
     glyph_roots = [dataset.glyph_root for dataset in datasets]
@@ -41,6 +42,7 @@ def generate_font_response(
             font_name=font_name,
             output_path=output_path,
             fmt=fmt,
+            metrics=metrics,
         )
         
         media_type = "font/ttf" if fmt == "ttf" else "font/woff"

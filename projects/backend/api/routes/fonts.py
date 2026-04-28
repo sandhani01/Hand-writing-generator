@@ -22,4 +22,5 @@ def generate_font(
         workspace_session_id=workspace_session_id,
         font_name=payload.fontName,
         fmt=payload.format,
+        metrics=payload.metrics,
     )

@@ -181,7 +181,13 @@ X_HEIGHT = 500
 LINE_GAP = 0
 
 
-def bitmap_to_contours(gray: np.ndarray, target_height: int = ASCENT) -> list[list[tuple[int, int]]]:
+def bitmap_to_contours(
+    gray: np.ndarray, 
+    target_height: int = ASCENT,
+    stroke_gain: float = 1.0,
+    smoothing: float = 1.0,
+    horizontal_scale: float = 1.0
+) -> list[list[tuple[int, int]]]:
     """
     Convert a grayscale glyph image to a list of smoothed closed contours.
     """
@@ -194,6 +200,17 @@ def bitmap_to_contours(gray: np.ndarray, target_height: int = ASCENT) -> list[li
         binary = cv2.bitwise_not(binary)
     if np.sum(binary) == 0:
         return []
+
+    # 2.5 Stroke Gain (Bold/Thin)
+    if stroke_gain != 1.0:
+        # Scale kernel size based on gain. 
+        # A small gain change should result in a 1px change at least.
+        k_size = max(1, int(abs(stroke_gain - 1.0) * 4))
+        kernel = np.ones((k_size, k_size), np.uint8)
+        if stroke_gain > 1.0:
+            binary = cv2.dilate(binary, kernel, iterations=1)
+        else:
+            binary = cv2.erode(binary, kernel, iterations=1)
 
     # 3. High-res Upscale WITHOUT blurring
     # We use high resolution to allow the vectorizer to place points with sub-pixel precision.
@@ -222,7 +239,8 @@ def bitmap_to_contours(gray: np.ndarray, target_height: int = ASCENT) -> list[li
 
         # 5. Very Gentle Simplification
         # We use a tiny epsilon to keep the exact shape, but just enough to remove redundant pixels.
-        epsilon = 0.12 * scale_factor 
+        # Smoothing multiplier scales the simplification epsilon.
+        epsilon = 0.12 * scale_factor * smoothing
         approx = cv2.approxPolyDP(contour, epsilon, True)
         
         if len(approx) < 3:
@@ -231,9 +249,10 @@ def bitmap_to_contours(gray: np.ndarray, target_height: int = ASCENT) -> list[li
         points_raw = [(float(pt[0][0]), float(pt[0][1])) for pt in approx]
         
         # Simple rolling average to remove quantization noise (pixel steps)
+        # Only if smoothing is enabled.
         n_pts = len(points_raw)
         smoothed_points = []
-        if n_pts > 4:
+        if n_pts > 4 and smoothing > 0.1:
             for j in range(n_pts):
                 p_m1 = points_raw[(j - 1) % n_pts]
                 p_0  = points_raw[j]
@@ -248,7 +267,7 @@ def bitmap_to_contours(gray: np.ndarray, target_height: int = ASCENT) -> list[li
         # 6. Coordinate Space Conversion
         font_points = []
         for px, py in smoothed_points:
-            fx = int(round(px * font_scale))
+            fx = int(round(px * font_scale * horizontal_scale))
             fy = int(round((img_h - py) * font_scale))
             font_points.append((fx, fy))
 
@@ -301,12 +320,25 @@ def build_font(
     glyph_library: dict[str, list[np.ndarray]],
     font_name: str = "My Handwriting",
     family_name: str | None = None,
+    metrics: dict[str, float] | None = None,
 ) -> TTFont:
     """
     Build a TTFont from the glyph library.
     """
     if family_name is None:
         family_name = font_name
+
+    # Use provided metrics or defaults
+    m = {
+        "ascent": ASCENT,
+        "descent": DESCENT,
+        "capHeight": CAP_HEIGHT,
+        "xHeight": X_HEIGHT,
+        "lineGap": LINE_GAP,
+        "letterSpacing": 1.0, # Multiplier
+    }
+    if metrics:
+        m.update(metrics)
 
     # Build the character → contours mapping
     char_glyphs: dict[str, list[list[tuple[int, int]]]] = {}
@@ -327,21 +359,27 @@ def build_font(
 
         # Determine target height based on character type
         if char.isupper():
-            target_h = CAP_HEIGHT
+            target_h = int(m["capHeight"])
         elif char.islower() and char in "bdfhklt":
-            target_h = int(ASCENT * 0.85)
+            target_h = int(m["ascent"] * 0.85)
         elif char.islower() and char in "gjpqy":
-            target_h = int(X_HEIGHT * 1.4)
+            target_h = int(m["xHeight"] * 1.4)
         elif char.islower():
-            target_h = X_HEIGHT
+            target_h = int(m["xHeight"])
         elif char.isdigit():
-            target_h = int(CAP_HEIGHT * 0.9)
+            target_h = int(m["capHeight"] * 0.9)
         elif char in ".,":
-            target_h = int(X_HEIGHT * 0.25)
+            target_h = int(m["xHeight"] * 0.25)
         else:
-            target_h = int(CAP_HEIGHT * 0.85)
+            target_h = int(m["capHeight"] * 0.85)
 
-        contours = bitmap_to_contours(best, target_height=target_h)
+        contours = bitmap_to_contours(
+            best, 
+            target_height=target_h,
+            stroke_gain=m.get("strokeGain", 1.0),
+            smoothing=m.get("smoothing", 1.0),
+            horizontal_scale=m.get("horizontalScale", 1.0)
+        )
         if contours:
             char_glyphs[char] = contours
             char_widths[char] = compute_glyph_width(contours)
@@ -411,16 +449,30 @@ def build_font(
         glyph_name = _ps_glyph_name(char)
         contours = char_glyphs[char]
 
+        # Determine vertical offset
+        y_offset = 0
+        if char in "gjpqy":
+            # Shift the glyph down so its bottom (descender) matches the descent metric
+            y_offset = int(m["descent"])
+        elif char in ".,":
+            # Punctuation often needs a slight shift to sit naturally
+            if char == ",":
+                y_offset = int(m["descent"] * 0.3)
+        elif char in "()[]{}":
+            # Center these vertically around the x-height
+            y_offset = int(m["descent"] * 0.2)
+
         pen = TTGlyphPen(None)
         for contour in contours:
             if len(contour) < 3:
                 continue
             
-            # Use qCurveTo on the high-fidelity polyline.
-            # This creates a smooth quadratic spline that stays very close to the natural ink line.
-            pen.moveTo(contour[0])
+            # Apply y_offset to all points in the contour
+            p0 = (contour[0][0], contour[0][1] + y_offset)
+            pen.moveTo(p0)
             if len(contour) > 1:
-                pen.qCurveTo(*contour[1:])
+                shifted_points = [(pt[0], pt[1] + y_offset) for pt in contour[1:]]
+                pen.qCurveTo(*shifted_points)
             pen.closePath()
 
         try:
@@ -429,20 +481,20 @@ def build_font(
             print(f"  [!] Failed to build glyph '{char}': {e}")
 
     # ---- Metrics ----
-    metrics = {}
-    metrics[".notdef"] = (500, 50)
-    metrics["space"] = (int(UNITS_PER_EM * 0.3), 0)
+    metrics_table = {}
+    metrics_table[".notdef"] = (500, 50)
+    metrics_table["space"] = (int(UNITS_PER_EM * 0.3 * m["letterSpacing"]), 0)
     for char in sorted(char_glyphs.keys()):
         glyph_name = _ps_glyph_name(char)
-        width = char_widths.get(char, int(UNITS_PER_EM * 0.5))
+        width = int(char_widths.get(char, int(UNITS_PER_EM * 0.5)) * m["letterSpacing"])
         lsb = compute_lsb(char_glyphs[char])
-        metrics[glyph_name] = (width, lsb)
+        metrics_table[glyph_name] = (width, lsb)
 
-    fb.setupHorizontalMetrics(metrics)
+    fb.setupHorizontalMetrics(metrics_table)
 
     fb.setupHorizontalHeader(
-        ascent=ASCENT,
-        descent=DESCENT,
+        ascent=int(m["ascent"]),
+        descent=int(m["descent"]),
     )
 
     fb.setupNameTable({
@@ -459,13 +511,13 @@ def build_font(
     })
 
     fb.setupOS2(
-        sTypoAscender=ASCENT,
-        sTypoDescender=DESCENT,
-        sTypoLineGap=LINE_GAP,
-        usWinAscent=ASCENT,
-        usWinDescent=abs(DESCENT),
-        sxHeight=X_HEIGHT,
-        sCapHeight=CAP_HEIGHT,
+        sTypoAscender=int(m["ascent"]),
+        sTypoDescender=int(m["descent"]),
+        sTypoLineGap=int(m["lineGap"]),
+        usWinAscent=int(m["ascent"]),
+        usWinDescent=abs(int(m["descent"])),
+        sxHeight=int(m["xHeight"]),
+        sCapHeight=int(m["capHeight"]),
         fsType=0,  # Installable embedding
     )
 

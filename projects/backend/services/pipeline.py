@@ -83,12 +83,13 @@ def generate_font_file(
     font_name: str,
     output_path: Path,
     fmt: str = "ttf",
+    metrics: dict[str, float] | None = None,
 ) -> Path:
     library = font_gen.load_glyph_images(glyph_roots)
     if not library:
         raise ValueError("No glyph images found in the specified datasets.")
 
-    font = font_gen.build_font(library, font_name=font_name)
+    font = font_gen.build_font(library, font_name=font_name, metrics=metrics)
     font.save(str(output_path))
 
     if fmt == "woff":

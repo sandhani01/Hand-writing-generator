@@ -12,6 +12,7 @@ from .api.routes.health import router as health_router
 from .api.routes.renders import router as renders_router
 from .api.routes.users import router as users_router
 from .api.routes.fonts import router as fonts_router
+from .api.routes.samples import router as samples_router
 from .config import get_settings
 
 from .workspace import cleanup_stale_workspaces, prepare_workspace_runtime
@@ -66,3 +67,4 @@ app.include_router(backgrounds_router, prefix="/api/v1")
 app.include_router(datasets_router, prefix="/api/v1")
 app.include_router(renders_router, prefix="/api/v1")
 app.include_router(fonts_router, prefix="/api/v1")
+app.include_router(samples_router, prefix="/api/v1")
