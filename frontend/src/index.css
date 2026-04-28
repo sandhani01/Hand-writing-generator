@@ -945,13 +945,6 @@ img {
   -webkit-text-fill-color: transparent;
 }
 
-.samples-subtitle {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--ink-secondary);
-  font-weight: 500;
-  max-width: 50ch;
-}
 
 .samples-grid {
   display: grid;
@@ -1644,6 +1637,13 @@ img {
   font-size: 1.25rem;
   font-weight: 700;
   color: white;
+}
+
+.samples-error-detail {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.6;
+  max-width: 40ch;
 }
 
 .samples-empty p {

@@ -44,7 +44,6 @@ export function SamplesPage({ onBack }: Props) {
             </button>
             <div className="samples-header__text">
               <h1 className="samples-title">Handwriting Samples</h1>
-              <p className="samples-subtitle">Discover the variety of styles you can achieve.</p>
             </div>
           </div>
         </header>
@@ -61,6 +60,7 @@ export function SamplesPage({ onBack }: Props) {
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
               <span>{error}</span>
+              <p className="samples-error-detail">Please ensure the backend server is running on port 8000.</p>
               <button onClick={() => window.location.reload()} className="samples-retry-btn">Retry</button>
             </div>
           ) : samples.length === 0 ? (
