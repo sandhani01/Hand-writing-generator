@@ -19,10 +19,14 @@ export function AssignmentGate({
   initialTemplatesView = false,
 }: Omit<Props, "onLogout">) {
   return (
-    <div className="app app--gate">
-      <a className="skip-link" href="#notes-picker">
-        Skip to choices
-      </a>
+    <>
+      <div className="gate-background">
+        <div className="gate-background__glow" />
+      </div>
+      <div className="app app--gate">
+        <a className="skip-link" href="#notes-picker">
+          Skip to choices
+        </a>
       <div className="gate-topbar">
         <span className="gate-brand">Handwritten-Notes</span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -34,6 +38,7 @@ export function AssignmentGate({
         onOpenDemo={onOpenDemo}
         initialTemplatesView={initialTemplatesView}
       />
-    </div>
+      </div>
+    </>
   );
 }

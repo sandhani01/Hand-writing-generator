@@ -41,6 +41,18 @@ export type RenderOptions = {
   charOverrides: Record<string, CharacterOverride>;
 };
 
+export type FontMetricsOptions = {
+  ascent: number;
+  descent: number;
+  xHeight: number;
+  capHeight: number;
+  lineGap: number;
+  letterSpacing: number;
+  strokeGain: number;
+  smoothing: number;
+  horizontalScale: number;
+};
+
 export type CharacterOverride = {
   scaleMultiplier: number;
   widthMultiplier: number;

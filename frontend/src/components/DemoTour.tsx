@@ -29,8 +29,8 @@ const STANDARD_STEPS: DemoStep[] = [
     imagePath: "/demo/01-Print Grid.png",
     imageAlt: "Grid template printed on paper",
     description:
-      "Download the PDF grid templates from the start page and print them on A4 paper. These ArUco-marked grids let the engine precisely locate every character you write.",
-    actionLabel: "Get Templates",
+      "Download the PDF grids from the start page and print them on A4 paper. These ArUco-marked grids let the engine precisely locate every character you write.",
+    actionLabel: "Get Grid",
     accent: {
       "--step-accent": "#5fa8d3",
       "--step-accent-dim": "rgba(95, 168, 211, 0.12)",

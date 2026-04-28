@@ -36,6 +36,7 @@ import type {
   RenderOptions,
   UploadCounts,
   UploadType,
+  FontMetricsOptions,
 } from "./types";
 
 const EMPTY_COUNTS: UploadCounts = {
@@ -684,6 +685,17 @@ export default function App() {
 
   const [isExportingFont, setIsExportingFont] = useState(false);
   const [fontExportError, setFontExportError] = useState<string | null>(null);
+  const [fontMetrics, setFontMetrics] = useState<FontMetricsOptions>({
+    ascent: 800,
+    descent: -200,
+    capHeight: 700,
+    xHeight: 500,
+    lineGap: 0,
+    letterSpacing: 1.0,
+    strokeGain: 1.0,
+    smoothing: 1.0,
+    horizontalScale: 1.0,
+  });
 
   const handleExportFont = async (format: "ttf" | "woff" = "ttf") => {
     if (!authToken || !workspaceSessionId) {
@@ -700,6 +712,7 @@ export default function App() {
         body: JSON.stringify({
           fontName: "My Handwriting",
           format,
+          metrics: fontMetrics,
         }),
         authToken,
         workspaceSessionId,
@@ -969,6 +982,8 @@ export default function App() {
         uploadError={uploadError}
         isExportingFont={isExportingFont}
         fontExportError={fontExportError}
+        metrics={fontMetrics}
+        onMetricsChange={setFontMetrics}
         onUpload={handleUpload}
         onExportFont={handleExportFont}
         onBack={openNotePicker}

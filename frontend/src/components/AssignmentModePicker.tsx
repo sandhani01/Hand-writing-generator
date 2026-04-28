@@ -50,22 +50,35 @@ export function AssignmentModePicker({
               </svg>
             </button>
           )}
-          <h1 id="mode-picker-title" className="mode-picker__title" style={{ marginTop: '1rem' }}>
-            {!workspace ? "Choose your workspace" : 
-             showTemplates ? "Handwriting Templates" :
-             workspace === "font" ? "Make Your Own Font" : 
-             "What is your assignment?"}
-          </h1>
+          <div className="mode-picker__header-content">
+            <h1 id="mode-picker-title" className="mode-picker__title">
+              {!workspace ? "Choose your workspace" : 
+               showTemplates ? "Handwriting Grids" :
+               workspace === "font" ? "Make Your Own Font" : 
+               "Select assignment type"}
+            </h1>
+            {!workspace && (
+              <p className="mode-picker__lede">
+                Select a specialized environment to start your creative workflow.
+              </p>
+            )}
+          </div>
         </header>
 
         <section className="mode-picker__instructions" aria-label="Mode instructions">
           {!workspace ? (
              <div className="workspace-selector">
                 <button 
-                  className="workspace-card"
+                  className="workspace-card workspace-card--font"
                   onClick={() => setWorkspace("font")}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+                    e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+                  }}
                 >
-                   <div className="workspace-card__icon workspace-card__icon--font">
+                   <div className="workspace-card__glow" />
+                   <div className="workspace-card__icon">
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M4 7V4h16v3" />
                         <path d="M9 20h6" />
@@ -74,20 +87,29 @@ export function AssignmentModePicker({
                    </div>
                    <div className="workspace-card__content">
                       <h2 className="workspace-card__title">Make your Own font</h2>
-                      <p className="workspace-card__desc">Vectorize glyphs and export .TTF</p>
+                      <p className="workspace-card__desc">Vectorize your unique handwriting into a professional .TTF font file.</p>
                    </div>
-                   <div className="workspace-card__arrow">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
+                   <div className="workspace-card__footer">
+                      <span>Get Started</span>
+                      <div className="workspace-card__arrow">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
                    </div>
                 </button>
 
                 <button 
-                  className="workspace-card"
+                  className="workspace-card workspace-card--notes"
                   onClick={() => setWorkspace("notes")}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+                    e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+                  }}
                 >
-                   <div className="workspace-card__icon workspace-card__icon--notes">
+                   <div className="workspace-card__glow" />
+                   <div className="workspace-card__icon">
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
@@ -95,19 +117,22 @@ export function AssignmentModePicker({
                    </div>
                    <div className="workspace-card__content">
                       <h2 className="workspace-card__title">Make Handwritten Notes</h2>
-                      <p className="workspace-card__desc">Theory and coding assignment modes</p>
+                      <p className="workspace-card__desc">Generate realistic handwritten assignments and theory notes effortlessly.</p>
                    </div>
-                   <div className="workspace-card__arrow">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
+                   <div className="workspace-card__footer">
+                      <span>Enter Workspace</span>
+                      <div className="workspace-card__arrow">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
                    </div>
                 </button>
              </div>
           ) : !showTemplates ? (
             <div className="mode-instructions" role="group">
               
-              {workspace === "font" && (
+               {workspace === "font" && (
                 <div className="mode-instructions__group">
                   <div className="mode-instructions--triad">
                     <button
@@ -132,6 +157,29 @@ export function AssignmentModePicker({
                         </svg>
                       </div>
                       <div className="mode-instructions__badge" style={{ top: '1.25rem', right: '1.25rem' }}>NEW</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="mode-instructions__item mode-instructions__item--templates"
+                      onClick={() => setShowTemplates(true)}
+                    >
+                      <div className="mode-instructions__icon mode-instructions__icon--templates" aria-hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                      </div>
+                      <div className="mode-instructions__text">
+                        <div className="mode-instructions__name">Print Grid</div>
+                        <div className="mode-instructions__detail">Get printable PDF handwriting grids.</div>
+                      </div>
+                      <div className="mode-instructions__arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </button>
 
                     <button
@@ -247,7 +295,7 @@ export function AssignmentModePicker({
                         </svg>
                       </div>
                       <div className="mode-instructions__text">
-                        <div className="mode-instructions__name">Templates</div>
+                        <div className="mode-instructions__name">Print Grid</div>
                         <div className="mode-instructions__detail">Get printable PDF handwriting grids.</div>
                       </div>
                       <div className="mode-instructions__arrow">
@@ -296,36 +344,38 @@ export function AssignmentModePicker({
                 </div>
               </div>
 
-              <div className="mode-example" aria-label="Example coding symbols preview">
-                <div style={{ marginBottom: "1rem" }}>
-                  <a
-                    href="/symbols_grid.pdf"
-                    download="Handwriting_Template_Symbols.pdf"
-                    className="mode-template-card"
-                  >
-                    <div className="mode-template-card__icon">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="12" y1="12" x2="12" y2="18" />
-                        <polyline points="9 15 12 18 15 15" />
-                      </svg>
-                    </div>
-                    <div className="mode-template-card__content" style={{ textAlign: "left" }}>
-                      <div className="mode-template-card__name">Symbol Font Grid</div>
-                      <div className="mode-template-card__size">PDF Template (6×5)</div>
-                    </div>
-                  </a>
-                </div>
+              {workspace !== "font" && (
+                <div className="mode-example" aria-label="Example coding symbols preview">
+                  <div style={{ marginBottom: "1rem" }}>
+                    <a
+                      href="/symbols_grid.pdf"
+                      download="Handwriting_Template_Symbols.pdf"
+                      className="mode-template-card"
+                    >
+                      <div className="mode-template-card__icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="12" y1="12" x2="12" y2="18" />
+                          <polyline points="9 15 12 18 15 15" />
+                        </svg>
+                      </div>
+                      <div className="mode-template-card__content" style={{ textAlign: "left" }}>
+                        <div className="mode-template-card__name">Symbol Font Grid</div>
+                        <div className="mode-template-card__size">PDF Template (6×5)</div>
+                      </div>
+                    </a>
+                  </div>
 
-                <div className="mode-example__img-container">
-                  <img className="mode-example__real-img" src="/coding_symbols.jpg" alt="Symbols grid" loading="lazy" />
-                </div>
+                  <div className="mode-example__img-container">
+                    <img className="mode-example__real-img" src="/coding_symbols.jpg" alt="Symbols grid" loading="lazy" />
+                  </div>
 
-                <div className="mode-example__head" style={{ marginTop: "1rem", textAlign: "center" }}>
-                  <div className="mode-example__title">SYMBOLS GRID TEMPLATE (6×5)</div>
+                  <div className="mode-example__head" style={{ marginTop: "1rem", textAlign: "center" }}>
+                    <div className="mode-example__title">SYMBOLS GRID TEMPLATE (6×5)</div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </section>
